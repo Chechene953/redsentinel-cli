@@ -35,6 +35,81 @@ from redsentinel.utils import load_config, now_iso
 cfg = load_config()
 
 
+def format_nmap_results(results):
+    """Formate les résultats nmap en tableaux stylés"""
+    if not isinstance(results, dict):
+        return None
+    
+    if results.get("dry_run"):
+        return results
+    
+    if "error" in results:
+        error(f"Nmap error: {results['error']}")
+        return None
+    
+    formatted_results = []
+    
+    for host, host_data in results.items():
+        if not isinstance(host_data, dict):
+            continue
+        
+        # Tableau principal pour cet host
+        table = Table(show_header=True, header_style="bold red", 
+                      border_style="cyan", title=f"Host: {host}")
+        table.add_column("Port", style="cyan", width=8)
+        table.add_column("State", style="green", width=10)
+        table.add_column("Service", style="yellow", width=20)
+        table.add_column("Version", style="white", width=35)
+        
+        # Extraire les informations de ports
+        protocols = host_data.get("protocols", {})
+        all_ports = []
+        
+        for proto in protocols:
+            for port, port_info in protocols[proto].items():
+                if isinstance(port_info, dict):
+                    state = port_info.get("state", "unknown")
+                    name = port_info.get("name", "")
+                    product = port_info.get("product", "")
+                    version = port_info.get("version", "")
+                    
+                    # Construire la version complète
+                    service_name = name if name else "unknown"
+                    full_version = f"{product}".strip()
+                    if version:
+                        full_version += f" {version}".strip()
+                    if not full_version:
+                        full_version = "-"
+                    
+                    # Styliser l'état
+                    state_style = state.lower()
+                    if state_style == "open":
+                        state_display = "[green]✓ OPEN[/green]"
+                    elif state_style == "filtered":
+                        state_display = "[yellow]! FILTERED[/yellow]"
+                    elif state_style == "closed":
+                        state_display = "[red]✗ CLOSED[/red]"
+                    else:
+                        state_display = f"[dim]{state}[/dim]"
+                    
+                    all_ports.append((port, state_display, service_name, full_version))
+        
+        # Trier par port
+        all_ports.sort(key=lambda x: int(x[0]))
+        
+        # Ajouter les lignes au tableau
+        if all_ports:
+            for port, state, service, version in all_ports:
+                table.add_row(str(port), state, service, version)
+            formatted_results.append(table)
+        else:
+            # Pas de ports ouverts
+            table.add_row("-", "[dim]No ports found[/dim]", "-", "-")
+            formatted_results.append(table)
+    
+    return formatted_results
+
+
 async def do_recon(target):
     """Fonction de reconnaissance subdomain"""
     panel = Panel.fit(
@@ -204,14 +279,14 @@ async def do_nmap_scan(hosts, args=None):
     
     console.print()
     
-    if isinstance(res, dict):
-        console.print(Panel.fit(
-            f"[bold]Nmap Results[/bold]\n\n"
-            f"[cyan]{res}[/cyan]",
-            border_style="cyan"
-        ))
-    else:
-        info(f"Results: {res}")
+    # Formater les résultats avec notre fonction de formatage
+    formatted = format_nmap_results(res)
+    
+    if formatted and isinstance(formatted, list):
+        # Afficher les tableaux formatés
+        for table in formatted:
+            console.print(table)
+            console.print()
     
     return res
 

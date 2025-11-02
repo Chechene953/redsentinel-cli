@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 from rich.console import Console
+from rich.align import Align
+from rich import box
 
 # Chemin vers le fichier de design tokens
 TOKENS_FILE = Path(__file__).parent / "design_tokens.json"
@@ -140,18 +142,43 @@ def debug(msg: str):
 
 # Print banner
 def print_banner(banner_type: str = "main"):
-    """Affiche le banner RedSentinel"""
-    banner = get_banner(banner_type)
-    # Affichage direct de l'ASCII art sans Panel pour éviter le troncage
-    console.print("\n", end="")
-    console.print(banner.strip(), style="bold red")
+    """Affiche le banner RedSentinel centré avec bordure ASCII"""
+    from rich.text import Text
+    from rich.panel import Panel
     
-    # Ajouter le sous-titre seulement pour le banner principal
+    console.print("\n")
+    
+    # Créer le banner complet
+    banner = get_banner(banner_type)
+    banner_lines = banner.strip().split('\n')
+    
+    # Ajouter le sous-titre si main banner
     if banner_type == "main":
         subtitle = design.banners.get("main_subtitle", "🔴 CYBERSECURITY | PENTEST | RED TEAM TOOLKIT")
-        console.print(f"\n[bold red]{subtitle}[/bold red]\n")
+        banner_lines.append("")
+        banner_lines.append(subtitle)
+    
+    # Reconstruire le banner avec toutes les lignes
+    full_banner = "\n".join(banner_lines)
+    
+    # Centrer avec Rich et ajouter une bordure style cyberpunk
+    if banner_type == "main":
+        # Utiliser Panel pour une bordure stylée
+        panel = Panel(
+            Text(full_banner, style="bold red"),
+            border_style="bold red",
+            box=box.HEAVY,
+            padding=(1, 2),
+            expand=False
+        )
+        centered_panel = Align.center(panel)
+        console.print(centered_panel)
     else:
-        console.print()
+        # Pour les autres bannières, affichage simple
+        for line in banner_lines:
+            console.print(Text(line, style="bold red"))
+    
+    console.print()
 
 
 # Table configuration
