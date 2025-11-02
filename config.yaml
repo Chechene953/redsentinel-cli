@@ -1,0 +1,29 @@
+target_whitelist:
+  - "example.com"
+
+tools:
+  nmap:
+    enabled: true
+    args: "-sC -sV -T4 --min-rate 100"
+    timeout: 300
+  nuclei:
+    enabled: false
+    path: "/usr/local/bin/nuclei"
+    templates_dir: "/path/to/nuclei-templates"
+    args: "-t default-templates -silent"
+  ffuf:
+    enabled: false
+    path: "/usr/local/bin/ffuf"
+  masscan:
+    enabled: false
+    path: "/usr/bin/masscan"
+    rate: 1000
+
+execution:
+  dry_run: true
+  concurrency: 10
+  max_runtime_seconds: 600
+  throttle_seconds_between_tools: 1
+
+storage:
+  sqlite_path: "redsentinel_results.db"
