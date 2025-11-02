@@ -204,12 +204,18 @@ RedSentinel cherche le fichier de configuration `config.yaml` dans l'ordre suiva
 2. `~/.redsentinel/config.yaml` (votre répertoire utilisateur)
 3. `/etc/redsentinel/config.yaml` (configuration système)
 
+**Par défaut, le mode `dry_run` est désactivé** dans `config.yaml`. Si vous voulez tester sans exécuter de vraies commandes, modifiez `dry_run: true`.
+
 Vous pouvez copier le fichier `config.yaml` du projet vers l'un de ces emplacements pour personnaliser votre configuration :
 
 ```bash
 # Configuration utilisateur (recommandé)
 mkdir -p ~/.redsentinel
 cp config.yaml ~/.redsentinel/config.yaml
+
+# Éditez pour désactiver le mode dry_run si vous voulez exécuter de vraies commandes
+nano ~/.redsentinel/config.yaml
+# Changez: dry_run: false
 
 # Ou configuration système (nécessite sudo)
 sudo mkdir -p /etc/redsentinel

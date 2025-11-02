@@ -80,10 +80,22 @@ design = DesignSystem()
 
 
 # Banners
-def get_banner(banner_type: str = "main") -> str:
-    """Récupère un banner par son type"""
+def get_banner(banner_type: str = "main", force_compact: bool = False) -> str:
+    """
+    Récupère un banner par son type
+    
+    Args:
+        banner_type: Type de banner (main, compact, minimal)
+        force_compact: Force l'utilisation du banner compact si terminal trop étroit
+    """
     banners = design.banners
-    banner_text = banners.get(banner_type, banners.get("main", ""))
+    
+    # Si force_compact est True ou terminal trop petit, utiliser le banner compact
+    if force_compact or (banner_type == "main" and console.width < 80):
+        banner_text = banners.get("compact", banners.get("main", ""))
+    else:
+        banner_text = banners.get(banner_type, banners.get("main", ""))
+    
     # Convertir les \n échappés en vrais retours à la ligne
     return banner_text.replace("\\n", "\n")
 
@@ -130,8 +142,16 @@ def debug(msg: str):
 def print_banner(banner_type: str = "main"):
     """Affiche le banner RedSentinel"""
     banner = get_banner(banner_type)
-    console.print(banner, style="bold red")
-    console.print()
+    # Affichage direct de l'ASCII art sans Panel pour éviter le troncage
+    console.print("\n", end="")
+    console.print(banner.strip(), style="bold red")
+    
+    # Ajouter le sous-titre seulement pour le banner principal
+    if banner_type == "main":
+        subtitle = design.banners.get("main_subtitle", "🔴 CYBERSECURITY | PENTEST | RED TEAM TOOLKIT")
+        console.print(f"\n[bold red]{subtitle}[/bold red]\n")
+    else:
+        console.print()
 
 
 # Table configuration
