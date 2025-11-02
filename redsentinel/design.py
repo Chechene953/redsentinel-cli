@@ -57,6 +57,11 @@ class DesignSystem:
         return self.tokens.get("banners", {})
     
     @property
+    def logos(self) -> dict:
+        """Retourne les logos"""
+        return self.tokens.get("logo", {})
+    
+    @property
     def messages(self) -> dict:
         """Retourne les formats de messages"""
         return self.tokens.get("messages", {})
@@ -102,6 +107,20 @@ def get_banner(banner_type: str = "main", force_compact: bool = False) -> str:
     return banner_text.replace("\\n", "\n")
 
 
+def get_logo(logo_type: str = "eye") -> str:
+    """
+    Récupère un logo par son type
+    
+    Args:
+        logo_type: Type de logo (eye, shield, target, radar, lock)
+    """
+    logos = design.logos
+    logo_text = logos.get(logo_type, logos.get("eye", ""))
+    
+    # Convertir les \n échappés en vrais retours à la ligne
+    return logo_text.replace("\\n", "\n")
+
+
 # Icônes
 ICON_SUCCESS = design.icons.get("success", "✓")
 ICON_ERROR = design.icons.get("error", "✗")
@@ -141,8 +160,8 @@ def debug(msg: str):
 
 
 # Print banner
-def print_banner(banner_type: str = "main"):
-    """Affiche le banner RedSentinel centré avec bordure ASCII"""
+def print_banner(banner_type: str = "main", show_logo: bool = True):
+    """Affiche le banner RedSentinel centré avec bordure ASCII et logo"""
     from rich.text import Text
     from rich.panel import Panel
     
@@ -158,8 +177,27 @@ def print_banner(banner_type: str = "main"):
         banner_lines.append("")
         banner_lines.append(subtitle)
     
-    # Reconstruire le banner avec toutes les lignes
-    full_banner = "\n".join(banner_lines)
+    # Si on affiche le logo et c'est le main banner
+    if banner_type == "main" and show_logo:
+        logo = get_logo("ascii")
+        logo_lines = logo.strip().split('\n')
+        
+        # Créer des lignes combinées (logo + banner)
+        max_lines = max(len(banner_lines), len(logo_lines))
+        combined_lines = []
+        
+        for i in range(max_lines):
+            logo_line = logo_lines[i] if i < len(logo_lines) else " " * len(logo_lines[0] if logo_lines else "")
+            banner_line = banner_lines[i] if i < len(banner_lines) else ""
+            
+            # Combiner avec espacement
+            combined_line = f"{logo_line}  {banner_line}".rstrip()
+            combined_lines.append(combined_line)
+        
+        full_banner = "\n".join(combined_lines)
+    else:
+        # Reconstruire le banner avec toutes les lignes
+        full_banner = "\n".join(banner_lines)
     
     # Centrer avec Rich et ajouter une bordure style cyberpunk
     if banner_type == "main":
