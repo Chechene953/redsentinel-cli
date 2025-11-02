@@ -11,6 +11,7 @@ RedSentinel est une suite complète d'outils d'automatisation pour les tâches d
 **Propriétaire** : Alexandre Tavares  
 **Entreprise** : Redsentinel  
 **Logiciel** : RedSentinel v5.0.0
+**Site Internet** : https://redsentinel.fr
 
 ### Clause de non-responsabilité
 
