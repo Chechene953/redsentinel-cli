@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 # Version actuelle
-__version__ = "1.1.1"
+__version__ = "5.0.0"
 
 
 def get_current_version():

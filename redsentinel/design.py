@@ -168,23 +168,27 @@ def print_banner(banner_type: str = "main", show_logo: bool = False):
     
     # Si on affiche le logo et c'est le main banner
     if banner_type == "main" and show_logo:
-        # Afficher le logo au-dessus
+        # Afficher le logo au-dessus, centré
         logo_top = design.banners.get("logo_top", "")
         if logo_top:
-            console.print(logo_top.replace("\\n", "\n"), style="bold red")
+            logo_lines = logo_top.replace("\\n", "\n").split('\n')
+            for line in logo_lines:
+                if line.strip():  # Ignorer les lignes vides
+                    console.print(Align.center(line), style="bold red")
             console.print()
     
     # Créer le banner complet
     banner = get_banner(banner_type)
     banner_lines = banner.strip().split('\n')
     
-    # Afficher le banner simple sans Panel (comme cli_example.py)
-    console.print("\n".join(banner_lines), style="bold red")
+    # Afficher le banner centré (comme cli_example.py)
+    for line in banner_lines:
+        console.print(Align.center(line), style="bold red")
     
-    # Ajouter le sous-titre si main banner
+    # Ajouter le sous-titre si main banner, centré
     if banner_type == "main":
         subtitle = design.banners.get("main_subtitle", "🔴 CYBERSECURITY | PENTEST | RED TEAM TOOLKIT")
-        console.print(subtitle, style="bold red")
+        console.print(Align.center(subtitle), style="bold red")
     
     console.print()
 

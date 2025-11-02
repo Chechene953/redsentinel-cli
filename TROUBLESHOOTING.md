@@ -1,4 +1,4 @@
-# 🔧 Dépannage RedSentinel
+# Dépannage RedSentinel
 
 ## Problème : "redsentinel" ne se lance pas en dehors du dossier
 
@@ -16,13 +16,13 @@ La commande `pipx ensurepath` n'a pas été exécutée, ou le PATH n'a pas été
 which redsentinel
 
 # 2. Si rien trouvé, réinstaller proprement
-cd ~/redsentinel-cli  # ou votre chemin
+cd ~/redsentinel-cli
 bash reinstall.sh
 
-# 3. Quand pipx vous demande, choisissez l'option 1
+# 3. Exécuter pipx ensurepath
 pipx ensurepath
 
-# 4. Redémarrer le terminal ou :
+# 4. Redémarrer le terminal ou
 source ~/.bashrc
 
 # 5. Vérifier que ça marche
@@ -57,7 +57,7 @@ cd ~/.local/share/pipx/venvs/redsentinel/
 # 4. Vérifier si c'est un repo Git
 ls -la .git
 
-# 5. Si .git n'existe pas, c'est le problème !
+# 5. Si .git n'existe pas, c'est le problème
 ```
 
 ### Solution
@@ -67,7 +67,7 @@ Le problème vient du fait que `pipx install -e .` ne copie pas forcément le do
 #### Solution 1 : Réinstaller avec le repo Git complet
 
 ```bash
-cd ~/redsentinel-cli  # votre repo source
+cd ~/redsentinel-cli
 
 # Désinstaller l'ancien
 pipx uninstall redsentinel
@@ -165,7 +165,7 @@ bash reinstall.sh
 # Diagnostic complet
 bash troubleshoot.sh
 
-# Ou manuellement :
+# Ou manuellement
 echo "PATH:"
 echo $PATH | tr ':' '\n' | grep -E '(pipx|redsentinel)'
 
@@ -199,5 +199,8 @@ Pour éviter tous ces problèmes, utilisez **toujours** l'une de ces méthodes d
 2. **pip global** : `sudo pip3 install -e . --break-system-packages`
 3. **install.sh** : `bash install.sh`
 
-Ne mélangez **jamais** plusieurs méthodes d'installation !
+Ne mélangez **jamais** plusieurs méthodes d'installation.
 
+---
+
+Pour toute question ou assistance, contactez Alexandre Tavares / Redsentinel.

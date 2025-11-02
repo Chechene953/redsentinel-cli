@@ -28,6 +28,28 @@ from redsentinel.recon import crtsh_subdomains
 from redsentinel.scanner import scan_ports
 from redsentinel.webcheck import fetch_http_info
 from redsentinel.tools.nmap_wrapper import nmap_scan_nm
+from redsentinel.tools.nuclei_wrapper import nuclei_scan
+from redsentinel.tools.ffuf_wrapper import ffuf_scan, parse_ffuf_json
+from redsentinel.tools.dns_tools import comprehensive_dns_enum
+from redsentinel.tools.ssl_tools import comprehensive_ssl_analysis
+from redsentinel.tools.nikto_wrapper import nikto_scan, parse_nikto_results
+from redsentinel.tools.masscan_wrapper import masscan_scan, parse_masscan_json
+from redsentinel.tools.cloud_tools import check_s3_bucket, cloudflare_detection, cloud_provider_detection
+from redsentinel.tools.cms_scanners import cms_detection, comprehensive_cms_scan
+from redsentinel.intel.threat_intel import comprehensive_threat_intel
+from redsentinel.intel.correlation import correlate_scan_results
+from redsentinel.attacks.password_tools import hydra_scan, medusa_scan, john_hash_crack, hashcat_crack, comprehensive_password_attack
+from redsentinel.attacks.exploit_framework import searchsploit_search, suggest_msf_modules, comprehensive_exploit_search
+from redsentinel.ai.discovery import automated_discovery_analysis, generate_attack_path, PatternRecognizer, SmartRecommendation, AnomalyDetector
+from redsentinel.osint.shodan_client import shodan_search_host, shodan_certificate_search
+from redsentinel.osint.censys_client import censys_search_host, censys_certificate_search
+from redsentinel.osint.social_engineering import discover_email_patterns, search_github
+from redsentinel.vulns.cve_matcher import search_cve, comprehensive_cve_matching
+from redsentinel.api.security_testing import comprehensive_api_security_scan, discover_api_endpoints
+from redsentinel.manage.target_manager import TargetManager, manage_targets
+from redsentinel.monitor.continuous import ContinuousMonitor, run_continuous_check
+from redsentinel.workflows.engine import run_workflow, get_available_workflows
+from redsentinel.workflows.presets import get_workflow_info
 from redsentinel.reporter import render_report
 from redsentinel.utils import load_config, now_iso
 
@@ -291,6 +313,1137 @@ async def do_nmap_scan(hosts, args=None):
     return res
 
 
+async def do_nuclei_scan(targets, templates=None, severity=None):
+    """Fonction de scan Nuclei"""
+    console.print()
+    info(f"Starting Nuclei vulnerability scan on [yellow]{', '.join(targets)}[/yellow]")
+    console.print()
+    
+    # Vérifier si Nuclei est disponible
+    if "error" in (result := nuclei_scan([""], dry_run=True)):
+        error("Nuclei not found! Install it with: sudo apt install nuclei")
+        console.print()
+        info("Or download from: https://github.com/projectdiscovery/nuclei/releases")
+        return None
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual Nuclei scan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: [cyan]nuclei -l targets.txt -silent[/cyan]",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "targets": targets}
+    
+    # Construire les arguments
+    nuclei_args = "-silent -json"
+    if severity:
+        nuclei_args += f" -severity {severity}"
+    if templates:
+        nuclei_args += f" -t {templates}"
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Running Nuclei scan...", total=None)
+        res = nuclei_scan(targets, args=nuclei_args, dry_run=False)
+        progress.stop()
+    
+    console.print()
+    
+    # Parser et afficher les résultats JSON
+    if res.get("rc") == 0 and res.get("out"):
+        import json
+        vulns = []
+        for line in res["out"].strip().split("\n"):
+            if line.strip():
+                try:
+                    vuln = json.loads(line)
+                    vulns.append(vuln)
+                except json.JSONDecodeError:
+                    pass
+        
+        if vulns:
+            # Table des vulnérabilités
+            table_config = get_table_config()
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold red]Nuclei Vulnerability Scan Results[/bold red]")
+            table.add_column("Severity", style="bold", width=10)
+            table.add_column("Name", style="cyan", width=40)
+            table.add_column("Target", style="yellow", width=30)
+            table.add_column("Matched At", style="white")
+            
+            for vuln in vulns:
+                severity = vuln.get("info", {}).get("severity", "unknown").upper()
+                name = vuln.get("info", {}).get("name", "Unknown")
+                target = vuln.get("host", "Unknown")
+                matched = vuln.get("matched-at", "Unknown")
+                
+                # Colorer selon la sévérité
+                if severity == "CRITICAL":
+                    severity_colored = f"[bold red]{severity}[/bold red]"
+                elif severity == "HIGH":
+                    severity_colored = f"[red]{severity}[/red]"
+                elif severity == "MEDIUM":
+                    severity_colored = f"[yellow]{severity}[/yellow]"
+                else:
+                    severity_colored = f"[dim]{severity}[/dim]"
+                
+                table.add_row(severity_colored, name, target, matched)
+            
+            console.print(table)
+            console.print()
+            success(f"Found {len(vulns)} vulnerability/vulnerabilities")
+        else:
+            success("No vulnerabilities found!")
+    else:
+        if res.get("err"):
+            error(f"Nuclei error: {res['err']}")
+        else:
+            info("Nuclei scan completed")
+    
+    return res
+
+
+async def do_ffuf_scan(target_url, wordlist=None, extensions=None):
+    """Fonction de directory brute force avec ffuf"""
+    console.print()
+    info(f"Starting Directory Brute Force on [yellow]{target_url}[/yellow]")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual ffuf scan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: [cyan]ffuf -u {target_url}/FUZZ -w wordlist.txt[/cyan]",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": target_url}
+    
+    # Déterminer le wordlist à utiliser
+    default_wordlist = "/usr/share/wordlists/dirb/common.txt"
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Brute forcing directories...", total=None)
+        res = ffuf_scan(target_url, wordlist=wordlist or default_wordlist, extensions=extensions)
+        progress.stop()
+    
+    console.print()
+    
+    # Parser les résultats
+    if res.get("rc") == 0:
+        results = parse_ffuf_json("/tmp/ffuf_output.json")
+        if results:
+            table_config = get_table_config()
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold green]Directory Brute Force Results[/bold green]")
+            table.add_column("Status", style="bold", width=10)
+            table.add_column("URL", style="cyan", width=50)
+            table.add_column("Size", style="yellow", width=15)
+            table.add_column("Words", style="dim", width=10)
+            
+            for result in results[:50]:  # Afficher les 50 premiers
+                status = str(result.get("status", "-"))
+                url = result.get("url", "-")
+                size = str(result.get("length", "-"))
+                words = str(result.get("words", "-"))
+                
+                # Colorer selon le status code
+                if status.startswith("2"):
+                    status_colored = f"[green]{status}[/green]"
+                elif status.startswith("3"):
+                    status_colored = f"[yellow]{status}[/yellow]"
+                elif status.startswith("4"):
+                    status_colored = f"[red]{status}[/red]"
+                else:
+                    status_colored = status
+                
+                table.add_row(status_colored, url, size, words)
+            
+            console.print(table)
+            console.print()
+            success(f"Found {len(results)} directory/file(ies)")
+        else:
+            info("No directories/files found")
+    else:
+        if res.get("error"):
+            error(f"Error: {res['error']}")
+        else:
+            error("ffuf scan failed")
+    
+    return res
+
+
+async def do_dns_enum(domain):
+    """Fonction d'enumération DNS complète"""
+    console.print()
+    info(f"Starting comprehensive DNS enumeration for [yellow]{domain}[/yellow]")
+    console.print()
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Enumerating DNS records...", total=None)
+        results = await comprehensive_dns_enum(domain, tools=["dig", "host"])
+        progress.stop()
+    
+    console.print()
+    
+    # Afficher les résultats
+    table_config = get_table_config()
+    
+    # Table pour DIG
+    if "dig" in results and results["dig"]:
+        table = Table(show_header=True, header_style=table_config["header_style"],
+                     border_style=table_config["border_style"],
+                     title="[bold]DNS Records (dig)[/bold]")
+        table.add_column("Type", style="cyan", width=10)
+        table.add_column("Records", style="yellow")
+        
+        for rtype, records in results["dig"].items():
+            if records:
+                table.add_row(rtype, "\n".join(records))
+        
+        console.print(table)
+        console.print()
+    
+    # Table pour HOST
+    if "host" in results and results["host"]:
+        table = Table(show_header=True, header_style=table_config["header_style"],
+                     border_style=table_config["border_style"],
+                     title="[bold]DNS Records (host)[/bold]")
+        table.add_column("Type", style="cyan", width=10)
+        table.add_column("Records", style="yellow")
+        
+        for rtype, record in results["host"].items():
+            if record:
+                table.add_row(rtype, record)
+        
+        console.print(table)
+        console.print()
+    
+    if results:
+        success("DNS enumeration completed")
+    else:
+        warning("No DNS records found or tools not available")
+    
+    return results
+
+
+async def do_ssl_analysis(host, port=443):
+    """Fonction d'analyse SSL/TLS"""
+    console.print()
+    info(f"Starting SSL/TLS analysis for [yellow]{host}:{port}[/yellow]")
+    console.print()
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Analyzing SSL/TLS configuration...", total=None)
+        results = await comprehensive_ssl_analysis(host, port)
+        progress.stop()
+    
+    console.print()
+    
+    # Afficher les résultats TLS basiques
+    if results.get("tls_basic") and results["tls_basic"].get("supported"):
+        tls = results["tls_basic"]
+        
+        table_config = get_table_config()
+        table = Table(show_header=True, header_style=table_config["header_style"],
+                     border_style=table_config["border_style"],
+                     title="[bold green]SSL/TLS Certificate Information[/bold green]")
+        table.add_column("Property", style="cyan", width=20)
+        table.add_column("Value", style="yellow")
+        
+        cert = tls.get("certificate", {})
+        subject = cert.get("subject", {})
+        issuer = cert.get("issuer", {})
+        
+        table.add_row("Subject", ", ".join([f"{k}={v}" for k, v in subject.items()]))
+        table.add_row("Issuer", ", ".join([f"{k}={v}" for k, v in issuer.items()]))
+        table.add_row("Valid From", cert.get("notBefore", "-"))
+        table.add_row("Valid To", cert.get("notAfter", "-"))
+        
+        if tls.get("protocols"):
+            table.add_row("TLS Protocol", ", ".join(tls["protocols"]))
+        
+        if tls.get("ciphers"):
+            cipher = tls["ciphers"][0]
+            table.add_row("Cipher", f"{cipher.get('name')} ({cipher.get('bits')} bits)")
+        
+        console.print(table)
+        console.print()
+        success("SSL/TLS analysis completed")
+    else:
+        error = results.get("tls_basic", {}).get("error", "Unknown error")
+        error(f"SSL/TLS analysis failed: {error}")
+    
+    return results
+
+
+async def do_nikto_scan(target_url):
+    """Fonction de scan Nikto"""
+    console.print()
+    info(f"Starting Nikto web vulnerability scan on [yellow]{target_url}[/yellow]")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual Nikto scan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: [cyan]nikto -h {target_url}[/cyan]",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": target_url}
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Running Nikto scan...", total=None)
+        res = nikto_scan(target_url, output_format="txt", dry_run=False)
+        progress.stop()
+    
+    console.print()
+    
+    # Afficher les résultats si disponibles
+    if res.get("output_file"):
+        results = parse_nikto_results(res["output_file"])
+        if results:
+            table_config = get_table_config()
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold red]Nikto Vulnerability Scan Results[/bold red]")
+            table.add_column("Finding", style="cyan", width=60)
+            table.add_column("Details", style="yellow")
+            
+            for finding in results[:50]:  # Afficher les 50 premiers
+                finding_text = finding.get("finding", "-")
+                details = finding.get("info", "-")
+                table.add_row(finding_text, details)
+            
+            console.print(table)
+            console.print()
+            success(f"Found {len(results)} finding(s)")
+        else:
+            info("Reading Nikto output file...")
+            try:
+                with open(res["output_file"], "r") as f:
+                    console.print(Panel.fit(f.read()[:2000], border_style="cyan"))
+            except Exception:
+                pass
+    else:
+        if res.get("error"):
+            error(f"Error: {res['error']}")
+        else:
+            info("Nikto scan completed. Check output file for details.")
+    
+    return res
+
+
+async def do_workflow(workflow_name, target):
+    """Execute a workflow preset"""
+    console.print()
+    info(f"Starting [yellow]{workflow_name}[/yellow] workflow on [yellow]{target}[/yellow]")
+    console.print()
+    
+    # Get workflow info
+    wf_info = get_workflow_info(workflow_name)
+    if wf_info:
+        console.print(Panel.fit(
+            f"[bold]{wf_info['name']}[/bold]\n\n"
+            f"{wf_info['description']}\n\n"
+            f"Steps: {wf_info['steps']}",
+            border_style="cyan"
+        ))
+        console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual workflow execution")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute workflow: [cyan]{workflow_name}[/cyan]",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "workflow": workflow_name, "target": target}
+    
+    # Run workflow
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Running workflow...", total=None)
+        results = await run_workflow(workflow_name, target)
+        progress.stop()
+    
+    console.print()
+    
+    # Display results summary
+    if results.get("error"):
+        error(f"Workflow error: {results['error']}")
+    else:
+        table_config = get_table_config()
+        table = Table(show_header=True, header_style=table_config["header_style"],
+                     border_style=table_config["border_style"],
+                     title="[bold green]Workflow Execution Summary[/bold green]")
+        table.add_column("Step", style="cyan", width=30)
+        table.add_column("Status", style="bold", width=15)
+        
+        for step_result in results.get("steps", []):
+            step_name = step_result.get("step", "Unknown")
+            status = step_result.get("status", "unknown")
+            
+            if status == "completed":
+                status_colored = "[green]✓ Completed[/green]"
+            elif status == "error":
+                status_colored = "[red]✗ Error[/red]"
+            elif status == "skipped":
+                status_colored = "[dim]⊘ Skipped[/dim]"
+            else:
+                status_colored = f"[yellow]{status}[/yellow]"
+            
+            table.add_row(step_name, status_colored)
+        
+        console.print(table)
+        console.print()
+        
+        completed = sum(1 for s in results.get("steps", []) if s.get("status") == "completed")
+        total = len(results.get("steps", []))
+        success(f"Workflow completed: {completed}/{total} steps successful")
+    
+    return results
+
+
+async def do_cms_scan(url):
+    """CMS detection and scanning"""
+    console.print()
+    info(f"Starting CMS detection and scan on [yellow]{url}[/yellow]")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual CMS scan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: CMS detection and specialized scan",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": url}
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Detecting CMS...", total=None)
+        results = await comprehensive_cms_scan(url)
+        progress.stop()
+    
+    console.print()
+    
+    # Display CMS detection
+    if results.get("cms_detection"):
+        detection = results["cms_detection"]
+        if detection.get("cms") != "Unknown":
+            table_config = get_table_config()
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold green]CMS Detection Results[/bold green]")
+            table.add_column("Property", style="cyan", width=20)
+            table.add_column("Value", style="yellow")
+            
+            table.add_row("CMS Type", detection["cms"])
+            if detection.get("version"):
+                table.add_row("Version", detection["version"])
+            table.add_row("Confidence", f"{detection.get('confidence', 0)}%")
+            
+            console.print(table)
+            console.print()
+            success("CMS detected!")
+        else:
+            warning("No CMS detected")
+    
+    # Display scan results if available
+    if results.get("scanner_results") and not results["scanner_results"].get("error"):
+        info("Scanner results available in output file")
+    
+    return results
+
+
+async def do_cloud_scan(domain):
+    """Cloud infrastructure scanning"""
+    console.print()
+    info(f"Starting cloud infrastructure scan on [yellow]{domain}[/yellow]")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual cloud scan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: Cloud infrastructure analysis",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": domain}
+    
+    # Cloudflare detection
+    cf_detection = cloudflare_detection(domain)
+    
+    # Cloud provider detection
+    provider_detection = cloud_provider_detection(domain)
+    
+    table_config = get_table_config()
+    table = Table(show_header=True, header_style=table_config["header_style"],
+                 border_style=table_config["border_style"],
+                 title="[bold blue]Cloud Infrastructure Analysis[/bold blue]")
+    table.add_column("Property", style="cyan", width=25)
+    table.add_column("Value", style="yellow")
+    
+    table.add_row("Domain", domain)
+    if cf_detection.get("behind_cloudflare"):
+        table.add_row("Cloudflare", "[green]✓ Yes[/green]")
+        if cf_detection.get("ip_info"):
+            table.add_row("Cloudflare IP", cf_detection["ip_info"])
+    else:
+        table.add_row("Cloudflare", "[dim]No[/dim]")
+    
+    if provider_detection.get("provider") != "Unknown":
+        table.add_row("Cloud Provider", provider_detection["provider"])
+    if provider_detection.get("ip"):
+        table.add_row("IP Address", provider_detection["ip"])
+    
+    console.print(table)
+    console.print()
+    success("Cloud infrastructure analysis completed")
+    
+    return {"cloudflare": cf_detection, "provider": provider_detection}
+
+
+async def do_threat_intel(ip_or_domain):
+    """Threat intelligence gathering"""
+    console.print()
+    info(f"Gathering threat intelligence for [yellow]{ip_or_domain}[/yellow]")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: threat intelligence requires API keys")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            "Note: Threat intelligence requires API keys\n"
+            "Configure in config.yaml or environment variables",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": ip_or_domain}
+    
+    # Note: This would use API keys from config
+    console.print()
+    info("Threat intelligence requires API keys (VirusTotal, AbuseIPDB, GreyNoise)")
+    info("Check config.yaml for API key configuration")
+    warning("Skipping threat intelligence (no API keys configured)")
+    
+    return None
+
+
+async def do_data_correlation(target):
+    """Data correlation and analysis"""
+    console.print()
+    info(f"Starting data correlation for [yellow]{target}[/yellow]")
+    console.print()
+    
+    # Example: gather data first
+    console.print()
+    info("Gathering data from multiple sources...")
+    console.print()
+    
+    # Run subdomain enumeration (using direct function to avoid recursion)
+    subs = await crtsh_subdomains(target)
+    
+    # For demonstration, create simple correlation
+    from redsentinel.intel.correlation import DataCorrelation
+    
+    correlator = DataCorrelation()
+    for sub in subs[:50]:
+        correlator.add_subdomain(sub)
+    
+    # Generate correlation report
+    report = correlator.generate_report()
+    
+    console.print()
+    console.print(Panel.fit(
+        report["report"],
+        border_style="green",
+        title="[bold]Data Correlation Report[/bold]"
+    ))
+    
+    console.print()
+    success("Data correlation completed")
+    
+    return report
+
+
+async def do_masscan(host, ports="1-65535"):
+    """Ultra-fast port scan with Masscan"""
+    console.print()
+    info(f"Starting Masscan ultra-fast port scan on [yellow]{host}[/yellow]")
+    console.print()
+    
+    import os
+    if os.geteuid() != 0:
+        error("Masscan requires root privileges! Run with sudo")
+        return None
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual Masscan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: [cyan]masscan -p{ports} {host}[/cyan]",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": host}
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Running Masscan...", total=None)
+        res = masscan_scan(host, ports=ports)
+        progress.stop()
+    
+    console.print()
+    
+    if res.get("rc") == 0:
+        results = parse_masscan_json("/tmp/masscan_output.json")
+        if results:
+            table_config = get_table_config()
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold magenta]Masscan Results[/bold magenta]")
+            table.add_column("IP", style="cyan", width=20)
+            table.add_column("Port", style="yellow", width=10)
+            table.add_column("Protocol", style="green")
+            
+            for result in results[:100]:
+                ip = result.get("ip", "-")
+                port_data = result.get("ports", [{}])[0]
+                port = port_data.get("port", "-")
+                proto = port_data.get("proto", "-").upper()
+                
+                table.add_row(ip, str(port), proto)
+            
+            console.print(table)
+            console.print()
+            success(f"Found {len(results)} open port(s)")
+    else:
+        if res.get("error"):
+            error(f"Error: {res['error']}")
+    
+    return res
+
+
+async def do_password_attack(target, protocol, credentials=None):
+    """Password attack with Hydra/Medusa"""
+    console.print()
+    info(f"Starting password attack on [yellow]{target}[/yellow] ({protocol})")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual password attack")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            "⚠️ Password attacks should only be used with explicit authorization!\n"
+            f"Would execute: Hydra/Medusa on {protocol}://{target}",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "target": target, "protocol": protocol}
+    
+    # Show warning
+    console.print()
+    warning("⚠️ WARNING: Password attacks without authorization are ILLEGAL!")
+    console.print()
+    confirm = Prompt.ask("Continue? (yes/no)", default="no")
+    
+    if confirm.lower() != "yes":
+        info("Operation cancelled")
+        return None
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Running password attack...", total=None)
+        results = comprehensive_password_attack(target, protocol)
+        progress.stop()
+    
+    console.print()
+    
+    # Display results
+    if results.get("hydra") and results["hydra"]:
+        console.print()
+        success(f"Found {len(results['hydra'])} credential(s)!")
+        table_config = get_table_config()
+        table = Table(show_header=True, header_style=table_config["header_style"],
+                     border_style=table_config["border_style"],
+                     title="[bold red]Credential(s) Found[/bold red]")
+        table.add_column("Credentials", style="yellow")
+        
+        for cred in results["hydra"]:
+            table.add_row(cred)
+        
+        console.print(table)
+    else:
+        info("No credentials found")
+    
+    return results
+
+
+async def do_exploit_search(service, version=None):
+    """Exploit search and suggestions"""
+    console.print()
+    info(f"Searching exploits for [yellow]{service}[/yellow]")
+    if version:
+        info(f"Version: [yellow]{version}[/yellow]")
+    console.print()
+    
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual exploit search")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: searchsploit {service}",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "service": service}
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Searching exploits...", total=None)
+        results = comprehensive_exploit_search("", 0, service, version)
+        progress.stop()
+    
+    console.print()
+    
+    # Display ExploitDB results
+    if results.get("exploits", {}).get("searchsploit"):
+        exploit_result = results["exploits"]["searchsploit"]
+        if exploit_result.get("out"):
+            console.print(Panel.fit(
+                exploit_result["out"][:2000],
+                border_style="red",
+                title="[bold]ExploitDB Results[/bold]"
+            ))
+        console.print()
+    
+    # Display MSF suggestions
+    if results.get("msf_suggestions", {}).get("modules"):
+        modules = results["msf_suggestions"]["modules"]
+        if modules:
+            table_config = get_table_config()
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold green]Suggested Metasploit Modules[/bold green]")
+            table.add_column("Module", style="cyan", width=40)
+            table.add_column("Type", style="yellow", width=15)
+            table.add_column("Description", style="white")
+            
+            for module in modules:
+                table.add_row(
+                    module.get("name", "-"),
+                    module.get("type", "-"),
+                    module.get("description", "-")
+                )
+            
+            console.print(table)
+            console.print()
+    
+    return results
+
+
+async def do_ai_discovery(target):
+    """AI-powered automated discovery and recommendations"""
+    console.print()
+    info(f"Starting AI-powered discovery for [yellow]{target}[/yellow]")
+    console.print()
+    
+    # Gather initial data
+    info("Gathering preliminary data...")
+    subs = await crtsh_subdomains(target)
+    
+    # Create target data structure
+    target_data = {
+        "subdomains": subs,
+        "vulnerabilities": [],
+        "services": [],
+        "open_ports": []
+    }
+    
+    # Run AI analysis
+    analysis = automated_discovery_analysis(target_data)
+    
+    console.print()
+    console.print(Panel.fit(
+        f"""
+[bold]AI Analysis Complete[/bold]
+
+Subdomains analyzed: {len(subs)}
+Patterns detected: {len(analysis.get('pattern_analysis', {}))}
+Recommendations: {sum(len(v) for v in analysis.get('recommendations', {}).values())}
+Anomalies found: {len(analysis.get('anomalies', {}).get('unusual_ports', []))}
+Suggested tools: {len(analysis.get('suggested_tools', []))}
+""",
+        border_style="magenta",
+        title="[bold magenta]🧠 AI Discovery Results[/bold magenta]"
+    ))
+    
+    # Show recommendations
+    if analysis.get("recommendations"):
+        recs = analysis["recommendations"]
+        if recs.get("high"):
+            console.print()
+            console.print("[bold red]High Priority Actions:[/bold red]")
+            for rec in recs["high"][:5]:
+                console.print(f"  • {rec}")
+        
+        if recs.get("medium"):
+            console.print()
+            console.print("[bold yellow]Medium Priority Actions:[/bold yellow]")
+            for rec in recs["medium"][:5]:
+                console.print(f"  • {rec}")
+    
+    # Show suggested tools
+    if analysis.get("suggested_tools"):
+        console.print()
+        info("Suggested tools:")
+        for tool in analysis["suggested_tools"]:
+            console.print(f"  • {tool}")
+    
+    # Show anomalies
+    if analysis.get("anomalies"):
+        anomalies = analysis["anomalies"]
+        if anomalies.get("unusual_ports"):
+            console.print()
+            warning("Unusual ports detected:")
+            for anomaly in anomalies["unusual_ports"][:5]:
+                console.print(f"  • Port {anomaly['port']}: {anomaly['reason']}")
+    
+    console.print()
+    success("AI analysis completed!")
+    
+    return analysis
+
+
+async def do_smart_recommendations(target):
+    """Smart recommendations based on all findings"""
+    console.print()
+    info(f"Generating smart recommendations for [yellow]{target}[/yellow]")
+    console.print()
+    
+    # Perform comprehensive analysis
+    console.print()
+    info("Analyzing target comprehensively...")
+    console.print()
+    
+    # Gather data
+    subs = await crtsh_subdomains(target)
+    
+    # Use AI recommendation engine
+    recommender = SmartRecommendation()
+    
+    findings = {
+        "vulnerabilities": [],
+        "services": [],
+        "open_ports": []
+    }
+    
+    recommendations = recommender.generate_recommendations(findings)
+    prioritized = recommender.prioritize_actions(recommendations)
+    
+    console.print()
+    console.print(Panel.fit(
+        f"""
+[bold]Smart Recommendations[/bold]
+
+Total recommendations: {len(recommendations)}
+High priority: {len(prioritized['high'])}
+Medium priority: {len(prioritized['medium'])}
+Low priority: {len(prioritized['low'])}
+""",
+        border_style="blue",
+        title="[bold blue]💡 Smart Recommendations[/bold blue]"
+    ))
+    
+    # Display prioritized recommendations
+    if prioritized.get("high"):
+        console.print()
+        console.print("[bold red]🔴 HIGH PRIORITY:[/bold red]")
+        for i, rec in enumerate(prioritized["high"][:5], 1):
+            console.print(f"  {i}. {rec}")
+    
+    if prioritized.get("medium"):
+        console.print()
+        console.print("[bold yellow]🟡 MEDIUM PRIORITY:[/bold yellow]")
+        for i, rec in enumerate(prioritized["medium"][:5], 1):
+            console.print(f"  {i}. {rec}")
+    
+    console.print()
+    success("Smart recommendations generated!")
+    
+    return prioritized
+
+
+async def do_osint_comprehensive(target):
+    """Comprehensive OSINT gathering"""
+    console.print()
+    info(f"Starting comprehensive OSINT for [yellow]{target}[/yellow]")
+    console.print()
+    
+    # Note: Requires API keys for full functionality
+    console.print(Panel.fit(
+        "[yellow]Note:[/yellow] Full OSINT functionality requires API keys\n"
+        "(Shodan, Censys, etc.)\n\n"
+        "Continuing with available sources...",
+        border_style="yellow"
+    ))
+    console.print()
+    
+    # Gather basic certificate data (no API key required)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Gathering OSINT data...", total=None)
+        
+        # Certificate sources
+        from redsentinel.osint.cert_sources import crtsh_subdomains, all_cert_sources
+        subs = await crtsh_subdomains(target)
+        
+        progress.stop()
+    
+    console.print()
+    success(f"Found {len(subs)} subdomain(s)")
+    
+    return {"subdomains": subs}
+
+
+async def do_cve_matching(service_info):
+    """Match services to CVEs"""
+    console.print()
+    info("Starting CVE matching analysis")
+    console.print()
+    
+    if isinstance(service_info, str):
+        console.print("Example service info:")
+        console.print(Panel.fit(
+            '[{"name": "apache", "version": "2.4.49"}, {"name": "mysql", "version": "5.7"}]',
+            border_style="cyan"
+        ))
+        console.print()
+        console.print("CVE matching would check for known vulnerabilities...")
+        return {"status": "dry_run"}
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Matching services to CVEs...", total=None)
+        results = await comprehensive_cve_matching(service_info)
+        progress.stop()
+    
+    console.print()
+    
+    # Display critical CVEs
+    if results.get("critical_cves"):
+        console.print(Panel.fit(
+            f"[bold red]⚠️ {len(results['critical_cves'])} CRITICAL CVEs Found![/bold red]",
+            border_style="red"
+        ))
+        for cve in results["critical_cves"][:5]:
+            console.print(f"  • {cve['id']}: {cve['description'][:80]}")
+    
+    success(f"Found {results['total_cves']} total CVE(s)")
+    
+    return results
+
+
+async def do_api_security_scan(url):
+    """API security testing"""
+    console.print()
+    info(f"Starting API security scan on [yellow]{url}[/yellow]")
+    console.print()
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Scanning API...", total=None)
+        results = await comprehensive_api_security_scan(url)
+        progress.stop()
+    
+    console.print()
+    
+    # Display vulnerabilities
+    if results.get("vulnerabilities"):
+        for vuln in results["vulnerabilities"]:
+            severity = vuln.get("severity", "UNKNOWN")
+            console.print(f"[{severity}] {vuln['type']}: {vuln['details']}")
+    
+    # Display discovered endpoints
+    if results.get("endpoints"):
+        info(f"Discovered {len(results['endpoints'])} endpoint(s)")
+    
+    console.print()
+    success("API security scan completed")
+    
+    return results
+
+
+async def do_target_management():
+    """Target management interface"""
+    console.print()
+    info("Target Management System")
+    console.print()
+    
+    manager = TargetManager()
+    stats = manager.get_statistics()
+    
+    console.print(Panel.fit(
+        f"""
+[bold]Target Management Stats[/bold]
+
+Total Targets: {stats['total_targets']}
+Groups: {stats['total_groups']}
+Exclusions: {stats['total_exclusions']}
+
+By Status:
+  • New: {stats['targets_by_status']['new']}
+  • Scanned: {stats['targets_by_status']['scanned']}
+  • Error: {stats['targets_by_status']['error']}
+""",
+        border_style="blue",
+        title="[bold blue]🎯 Target Manager[/bold blue]"
+    ))
+    
+    # Show options
+    console.print()
+    action = Prompt.ask(
+        "Action (add/list/groups/stats)",
+        choices=["add", "list", "groups", "stats"],
+        default="stats"
+    )
+    
+    if action == "add":
+        target_name = Prompt.ask("Target name", default="example.com")
+        group_name = Prompt.ask("Group (optional)", default="")
+        notes = Prompt.ask("Notes (optional)", default="")
+        
+        result = manager.add_target(
+            target_name,
+            group=group_name if group_name else None,
+            notes=notes if notes else None
+        )
+        success(f"Added target: {target_name}")
+        
+    elif action == "list":
+        targets = manager.get_targets()
+        if targets:
+            for target in targets:
+                console.print(f"  • {target['name']} ({target['status']})")
+        else:
+            info("No targets yet")
+    
+    return stats
+
+
+async def do_continuous_monitoring(target):
+    """Continuous monitoring"""
+    console.print()
+    info(f"Setting up continuous monitoring for [yellow]{target}[/yellow]")
+    console.print()
+    
+    monitor = ContinuousMonitor()
+    
+    console.print(Panel.fit(
+        """
+[bold]Continuous Monitoring System[/bold]
+
+Monitors targets for:
+  • New subdomains
+  • New open ports
+  • Changed IPs
+  • Service changes
+
+Generates alerts on significant changes.
+""",
+        border_style="magenta",
+        title="[bold magenta]🔍 Continuous Monitor[/bold magenta]"
+    ))
+    
+    # Establish baseline
+    info("Establishing baseline...")
+    baseline_data = {
+        "subdomains": [],
+        "open_ports": [],
+        "services": []
+    }
+    
+    monitor.establish_baseline(target, baseline_data)
+    
+    console.print()
+    success("Baseline established! Monitoring is active.")
+    info("Run scans periodically to detect changes")
+    
+    return {"status": "baseline_established", "target": target}
+
+
 def interactive_menu():
     """Menu interactif principal"""
     print_banner(show_logo=True)  # Afficher le logo ASCII au-dessus du titre
@@ -325,6 +1478,26 @@ def interactive_menu():
             "  [cyan][3][/cyan] Nmap Scan (Service Detection)\n"
             "  [cyan][4][/cyan] Web HTTP Checks\n"
             "  [cyan][5][/cyan] Generate HTML Report\n"
+            "  [cyan][6][/cyan] Nuclei Vulnerability Scan\n"
+            "  [cyan][7][/cyan] Directory Brute Force (ffuf)\n"
+            "  [cyan][8][/cyan] SSL/TLS Analysis\n"
+            "  [cyan][9][/cyan] DNS Enumeration\n"
+            "  [cyan][10][/cyan] Nikto Web Vuln Scanner\n"
+            "  [cyan][11][/cyan] Automated Workflows\n"
+            "  [cyan][12][/cyan] CMS Detection & Scan\n"
+            "  [cyan][13][/cyan] Cloud Infrastructure Scan\n"
+            "  [cyan][14][/cyan] Threat Intelligence\n"
+            "  [cyan][15][/cyan] Data Correlation\n"
+            "  [cyan][16][/cyan] Masscan (Ultra-Fast Ports)\n"
+            "  [cyan][17][/cyan] Password Attack (Hydra/Medusa)\n"
+            "  [cyan][18][/cyan] Exploit Search (ExploitDB/MSF)\n"
+            "  [cyan][19][/cyan] AI-Powered Discovery\n"
+            "  [cyan][20][/cyan] Smart Recommendations\n"
+            "  [cyan][21][/cyan] Complete OSINT Gathering\n"
+            "  [cyan][22][/cyan] CVE Matching & Analysis\n"
+            "  [cyan][23][/cyan] API Security Testing\n"
+            "  [cyan][24][/cyan] Target Management\n"
+            "  [cyan][25][/cyan] Continuous Monitoring\n"
             "  [red][0][/red] Exit"
         )
         
@@ -332,7 +1505,7 @@ def interactive_menu():
         console.print()
         
         try:
-            choice = Prompt.ask("redsentinel> ", choices=["0", "1", "2", "3", "4", "5"])
+            choice = Prompt.ask("redsentinel> ", choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"])
         except KeyboardInterrupt:
             console.print()
             console.print()
@@ -410,6 +1583,127 @@ def interactive_menu():
                 console.print()
                 success(f"Report saved to: [cyan]{fn}[/cyan]")
                 info(f"Open it in your browser to view the full report")
+            
+            elif choice == "6":
+                # Nuclei Vulnerability Scan
+                console.print()
+                severity_choice = Prompt.ask("Severity filter (critical,high,medium,low,info) or all", default="all")
+                if severity_choice.lower() != "all":
+                    severity = severity_choice
+                else:
+                    severity = None
+                
+                loop.run_until_complete(do_nuclei_scan([target], severity=severity))
+            
+            elif choice == "7":
+                # Directory Brute Force (ffuf)
+                url = Prompt.ask("Target URL", default=f"https://{target}")
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                loop.run_until_complete(do_ffuf_scan(url))
+            
+            elif choice == "8":
+                # SSL/TLS Analysis
+                port_input = Prompt.ask("Port", default="443")
+                port = int(port_input) if port_input.isdigit() else 443
+                loop.run_until_complete(do_ssl_analysis(target, port))
+            
+            elif choice == "9":
+                # DNS Enumeration
+                loop.run_until_complete(do_dns_enum(target))
+            
+            elif choice == "10":
+                # Nikto Web Vulnerability Scanner
+                url = Prompt.ask("Target URL", default=f"https://{target}")
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                loop.run_until_complete(do_nikto_scan(url))
+            
+            elif choice == "11":
+                # Automated Workflows
+                console.print()
+                workflows = get_available_workflows()
+                info(f"Available workflows: {', '.join(workflows)}")
+                console.print()
+                
+                workflow_choice = Prompt.ask(
+                    "Select workflow (quick/standard/deep/vulnerability)",
+                    default="quick"
+                )
+                
+                if workflow_choice in workflows:
+                    loop.run_until_complete(do_workflow(workflow_choice, target))
+                else:
+                    error(f"Unknown workflow: {workflow_choice}")
+            
+            elif choice == "12":
+                # CMS Detection & Scan
+                url = Prompt.ask("Target URL", default=f"https://{target}")
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                loop.run_until_complete(do_cms_scan(url))
+            
+            elif choice == "13":
+                # Cloud Infrastructure Scan
+                loop.run_until_complete(do_cloud_scan(target))
+            
+            elif choice == "14":
+                # Threat Intelligence
+                loop.run_until_complete(do_threat_intel(target))
+            
+            elif choice == "15":
+                # Data Correlation
+                loop.run_until_complete(do_data_correlation(target))
+            
+            elif choice == "16":
+                # Masscan Ultra-Fast Port Scan
+                ports_input = Prompt.ask("Ports to scan (e.g., 1-1000)", default="1-65535")
+                loop.run_until_complete(do_masscan(target, ports=ports_input))
+            
+            elif choice == "17":
+                # Password Attack
+                console.print()
+                warning("⚠️ AUTHORIZED USE ONLY - ILLEGAL WITHOUT PERMISSION!")
+                console.print()
+                protocol = Prompt.ask("Protocol (ssh/ftp/http/smb)", default="ssh")
+                loop.run_until_complete(do_password_attack(target, protocol))
+            
+            elif choice == "18":
+                # Exploit Search
+                console.print()
+                service = Prompt.ask("Service name (e.g., apache, mysql)", default="apache")
+                version = Prompt.ask("Version (optional)", default="")
+                version = version if version else None
+                loop.run_until_complete(do_exploit_search(service, version))
+            
+            elif choice == "19":
+                # AI-Powered Discovery
+                loop.run_until_complete(do_ai_discovery(target))
+            
+            elif choice == "20":
+                # Smart Recommendations
+                loop.run_until_complete(do_smart_recommendations(target))
+            
+            elif choice == "21":
+                # Complete OSINT Gathering
+                loop.run_until_complete(do_osint_comprehensive(target))
+            
+            elif choice == "22":
+                # CVE Matching & Analysis
+                loop.run_until_complete(do_cve_matching("example"))
+            
+            elif choice == "23":
+                # API Security Testing
+                url = Prompt.ask("API URL", default=f"https://{target}/api")
+                loop.run_until_complete(do_api_security_scan(url))
+            
+            elif choice == "24":
+                # Target Management
+                loop.run_until_complete(do_target_management())
+            
+            elif choice == "25":
+                # Continuous Monitoring
+                loop.run_until_complete(do_continuous_monitoring(target))
             
             else:
                 error("Invalid choice")

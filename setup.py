@@ -17,8 +17,8 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="redsentinel",
     version=__version__,
-    author="RedSentinel Team",
-    description="RedSentinel automation tool for reconnaissance and scanning",
+    author="Alexandre Tavares - Redsentinel",
+    description="Outil de sécurité professionnel pour la reconnaissance et le scan",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),

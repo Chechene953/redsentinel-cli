@@ -1,316 +1,141 @@
-# RedSentinel Automation Prototype
+# RedSentinel - Outil de Sécurité Professionnel
 
-**⚠️ OUTIL DE SÉCURITÉ / PENTEST - USAGE RESPONSABLE UNIQUEMENT**
+**OUTIL DE SÉCURITÉ / PENTEST - USAGE PROFESSIONNEL UNIQUEMENT**
 
-Cette archive contient un prototype d'outil d'automatisation pour tâches de reconnaissance et scan,
-avec wrappers pour nmap, nuclei, etc.
+RedSentinel est une suite complète d'outils d'automatisation pour les tâches de reconnaissance, de scan de sécurité et d'analyse de vulnérabilités, développée par **Redsentinel** (propriétaire : Alexandre Tavares).
 
-> 🔴 **IMPORTANT**: N'utilisez RedSentinel **QUE** sur des cibles pour lesquelles vous avez une **autorisation écrite explicite**.  
-> L'utilisation non autorisée de ces outils peut violer des lois locales et internationales.
+> **AVERTISSEMENT IMPORTANT**: N'utilisez RedSentinel QUE sur des cibles pour lesquelles vous avez une autorisation écrite explicite. L'utilisation non autorisée de ces outils peut violer des lois locales et internationales.
 
-**📋 Guides :**
+## Propriété et Responsabilité
+
+**Propriétaire** : Alexandre Tavares  
+**Entreprise** : Redsentinel  
+**Logiciel** : RedSentinel v5.0.0
+
+### Clause de non-responsabilité
+
+RedSentinel est fourni "tel quel" et est destiné exclusivement à des fins professionnelles légales. Alexandre Tavares et Redsentinel ne peuvent être tenus responsables de :
+
+- Toute utilisation non autorisée de cet outil
+- Toute activité illégale ou malveillante effectuée avec cet outil
+- Tout dommage résultant de l'utilisation de cet outil sans autorisation
+- Toute violation de lois locales ou internationales liée à l'utilisation de cet outil
+
+L'utilisateur reconnaît être le seul responsable de l'utilisation de RedSentinel et s'engage à l'utiliser uniquement dans le cadre légal et éthique de ses missions professionnelles de sécurité informatique autorisées.
+
+## Documentation
+
 - [SECURITY.md](SECURITY.md) - Politique de sécurité et usage responsable
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Solutions aux problèmes courants
-- [VERSION_GUIDE.md](VERSION_GUIDE.md) - Créer et publier une nouvelle version
 
-## 🚀 Installation Rapide sur Kali Linux
+## Installation Rapide sur Kali Linux
 
-**Sur Kali Linux récent (2024+), vous avez 2 options :**
-
-### Option 1 : Avec pipx (✅ Recommandé sur Kali)
+### Option 1 : Avec pipx (Recommandé)
 
 ```bash
-# Installer pipx si ce n'est pas déjà fait
+# Installer pipx si nécessaire
 sudo apt install pipx
 pipx ensurepath
 
 # Installer RedSentinel
-cd ~/redsentinel-cli-main
+cd ~/redsentinel-cli
 pipx install -e .
 
 # Tester
 redsentinel --help
 ```
 
-### Option 2 : Installation globale (force)
-
-```bash
-cd ~/redsentinel-cli-main
-sudo pip3 install -e . --break-system-packages
-redsentinel  # Testez l'installation
-```
-
-> 💡 **Pour mettre à jour une version déjà installée** : `bash update.sh`  
-> 💡 **Si vous avez déjà essayé d'installer et ça ne marche pas** : `bash reinstall.sh`  
-> 💡 **Pour diagnostiquer des problèmes** : `bash troubleshoot.sh`
-
----
-
-## Installation sur Kali Linux
-
-⚠️ **Avant de commencer**, assurez-vous d'avoir les outils système suivants installés :
-- `python3` et `pip3`
-- `nmap` (pour les scans réseau)
-- `git` (pour cloner le dépôt)
-
-Sur Kali Linux, ils sont généralement déjà installés. Sinon :
-```bash
-sudo apt update
-sudo apt install python3 python3-pip python3-venv nmap git
-```
-
-### Méthode 1 : Installation avec pipx ⭐ RECOMMANDÉE
-
-**pipx** est parfait pour installer des applications CLI Python de façon isolée :
-
-```bash
-# 1. Installez pipx si ce n'est pas déjà fait
-sudo apt install pipx
-pipx ensurepath
-# Note: Redémarrer le terminal ou faire: source ~/.bashrc
-
-# 2. Clonez ou téléchargez le projet (public ou privé)
-cd ~
-git clone <votre-repo> redsentinel-cli
-cd redsentinel-cli
-
-# 3. Installez avec pipx
-pipx install -e .
-```
-
-**Important:** 
-- Avec pipx, `redsentinel` est disponible **partout** sur votre système, dans un environnement isolé
-- L'installation en mode développement (`-e`) garde le lien avec le repo Git, permettant les **mises à jour auto**
-- Fonctionne avec repos **public ET privé** - le système de mise à jour auto s'adapte
-
-```bash
-# Testez immédiatement
-redsentinel --help
-
-# Fonctionne de n'importe quel répertoire
-cd ~/Documents
-redsentinel recon example.com
-```
-
-### Méthode 1b : Installation globale avec pip (alternative)
-
-Si vous préférez une installation globale classique :
+### Option 2 : Installation globale
 
 ```bash
 cd ~/redsentinel-cli
 sudo pip3 install -e . --break-system-packages
-redsentinel --help
-```
-
-> **Note:** Sur Kali Linux récent, pipx est généralement préféré. Si vous préférez isoler dans un venv manuel, utilisez la Méthode 2.
-
-### Méthode 3 : Installation avec le script install.sh
-
-```bash
-# 1. Clonez ou téléchargez le projet
-cd ~
-git clone <votre-repo> redsentinel-cli
-cd redsentinel-cli
-
-# 2. Lancez le script d'installation
-bash install.sh
-```
-
-Le script va :
-- Créer un environnement virtuel Python dans `~/redsentinel-auto`
-- Installer les dépendances
-- Créer un launcher global `redsentinel` dans `/usr/local/bin`
-
-**Note:** Le script nécessitera votre mot de passe sudo pour créer le launcher global.
-
-### Méthode 4 : Installation Manuelle
-
-Si vous préférez une installation manuelle sans scripts :
-
-```bash
-# 1. Naviguez dans le projet
-cd redsentinel-cli
-
-# 2. Créez et activez un environnement virtuel
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Installez les dépendances
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# 4. (Optionnel) Créez un alias dans votre .bashrc ou .zshrc
-echo 'alias redsentinel="cd ~/redsentinel-cli && source .venv/bin/activate && python -m redsentinel.cli_menu"' >> ~/.bashrc
-source ~/.bashrc
+redsentinel
 ```
 
 ### Mise à jour
 
-RedSentinel vérifie **automatiquement** les mises à jour disponibles à chaque lancement !
-
-#### 🔄 Mise à jour automatique (au lancement)
-
-Lorsque vous lancez `redsentinel`, le programme :
-1. ✅ Vérifie s'il y a une nouvelle version disponible sur Git
-2. 📢 Vous avertit uniquement **s'il y a une mise à jour disponible**
-3. 🤔 Vous propose de mettre à jour automatiquement
-4. ⚙️ Si vous acceptez, lance `git pull` pour récupérer les nouvelles versions
-5. 🔄 Vous recommande de redémarrer pour appliquer les changements
-
-> **Note :** La vérification est **silencieuse** si votre version est à jour - vous ne verrez aucun message.
-
-> **🔒 Repo Privé :** La vérification de mise à jour fonctionne parfaitement avec un repo Git **privé** ! Avec `pipx install -e .`, le code source reste lié au repo Git original (même en privé), donc les mises à jour auto fonctionnent.
-
-#### 📝 Mise à jour manuelle
-
-Vous pouvez également mettre à jour manuellement :
+Pour mettre à jour une version déjà installée :
 
 ```bash
-cd ~/redsentinel-cli-main  # ou votre répertoire du projet
+cd ~/redsentinel-cli
 bash update.sh
 ```
 
-Le script détecte automatiquement votre méthode d'installation et met à jour proprement.
-
-> **Note :** Si vous utilisez un repo Git privé, le script `update.sh` vous demandera si vous voulez faire un `git pull`. Vous pouvez refuser et utiliser les fichiers locaux que vous avez déjà téléchargés.
-
-**Mise à jour manuelle selon votre méthode :**
-
+Ou manuellement :
 ```bash
-# Si installé via pipx
+# Avec pipx
 pipx reinstall redsentinel
 
-# Ou pour forcer la réinstallation complète
-pipx uninstall redsentinel
-pipx install -e .
-
-# Si installé via pip
-cd ~/redsentinel-cli-main
+# Avec pip
 sudo pip3 install -e . --upgrade --break-system-packages
-
-# Si installé via install.sh (réinstallation complète)
-bash reinstall.sh
 ```
 
-### Désinstallation
-
-Pour désinstaller RedSentinel :
-
-**Si installé via pipx :**
-```bash
-pipx uninstall redsentinel
-```
-
-**Si installé via pip :**
-```bash
-sudo pip3 uninstall redsentinel --break-system-packages
-```
-
-**Si installé via install.sh :**
-```bash
-sudo rm /usr/local/bin/redsentinel
-rm -rf ~/redsentinel-auto
-```
-
-### Utilisation
-
-Après l'installation, utilisez simplement :
+## Utilisation
 
 ```bash
 # Menu interactif
 redsentinel
 
-# Ou avec des commandes directes :
-redsentinel recon example.com
-redsentinel scan example.com --ports 80,443,22
-redsentinel nmap example.com
-redsentinel webcheck example.com
-```
-
-### Configuration
-
-RedSentinel cherche le fichier de configuration `config.yaml` dans l'ordre suivant :
-1. Le répertoire courant où vous exécutez la commande
-2. `~/.redsentinel/config.yaml` (votre répertoire utilisateur)
-3. `/etc/redsentinel/config.yaml` (configuration système)
-
-**Par défaut, le mode `dry_run` est désactivé** dans `config.yaml`. Si vous voulez tester sans exécuter de vraies commandes, modifiez `dry_run: true`.
-
-Vous pouvez copier le fichier `config.yaml` du projet vers l'un de ces emplacements pour personnaliser votre configuration :
-
-```bash
-# Configuration utilisateur (recommandé)
-mkdir -p ~/.redsentinel
-cp config.yaml ~/.redsentinel/config.yaml
-
-# Éditez pour désactiver le mode dry_run si vous voulez exécuter de vraies commandes
-nano ~/.redsentinel/config.yaml
-# Changez: dry_run: false
-
-# Ou configuration système (nécessite sudo)
-sudo mkdir -p /etc/redsentinel
-sudo cp config.yaml /etc/redsentinel/config.yaml
-```
-
-### Dépannage
-
-#### Erreur "externally-managed-environment"
-
-Sur Kali Linux récent, vous verrez cette erreur si vous utilisez `pip install` sans les bonnes options.
-
-**Solution :**
-```bash
-# Option 1 : Utilisez pipx (recommandé)
-sudo apt install pipx
-pipx ensurepath
-cd ~/redsentinel-cli-main
-pipx install -e .
-
-# Option 2 : Forcez l'installation globale
-cd ~/redsentinel-cli-main
-sudo pip3 install -e . --break-system-packages
-```
-
-#### Erreur "ModuleNotFoundError: No module named 'redsentinel'"
-
-Si vous voyez cette erreur après avoir utilisé `install.sh`, c'est que le package n'a pas été installé correctement.
-
-**Solution :**
-```bash
-# Nettoyer et réinstaller
-sudo rm /usr/local/bin/redsentinel
-rm -rf ~/redsentinel-auto
-cd ~/redsentinel-cli-main  # ou votre chemin
-bash install.sh  # Le script a été mis à jour pour corriger ce problème
-
-# Ou mieux, utilisez pipx
-pipx install -e .
-```
-
-#### Vérifier l'installation
-
-```bash
-# Vérifier que redsentinel est dans le PATH
-which redsentinel
-
-# Vérifier que le module Python est trouvé
-python3 -c "import redsentinel; print('OK')"
-
-# Tester la commande
+# Commandes directes
 redsentinel --help
 ```
 
-## Structure
+## Configuration
 
-- redsentinel/: code source (cli, recon, scanner, webcheck, reporter, utils)
-- redsentinel/tools/: wrappers pour outils externes (nmap, nuclei)
-- redsentinel/storage/: sqlite wrapper
-- plugins/: interface de plugin
-- config.yaml: config d'exemple
-- requirements.txt
+RedSentinel cherche le fichier `config.yaml` dans l'ordre suivant :
 
-Voir les commentaires dans les fichiers pour plus de détails sur l'utilisation.
+1. Répertoire courant
+2. `~/.redsentinel/config.yaml`
+3. `/etc/redsentinel/config.yaml`
 
-## 📦 Pour les Développeurs
+Par défaut, le mode `dry_run` est désactivé. Vous pouvez le personnaliser :
 
-**Créer une nouvelle version** : Voir [VERSION_GUIDE.md](VERSION_GUIDE.md) pour le workflow complet de versionnement.
+```bash
+mkdir -p ~/.redsentinel
+cp config.yaml ~/.redsentinel/config.yaml
+nano ~/.redsentinel/config.yaml
+```
+
+## Dépannage
+
+### Erreur "externally-managed-environment"
+
+Utilisez pipx ou forcez l'installation :
+```bash
+sudo pip3 install -e . --break-system-packages
+```
+
+### Erreur "ModuleNotFoundError"
+
+Réinstallez proprement :
+```bash
+bash reinstall.sh
+```
+
+## Structure du Projet
+
+- `redsentinel/` : Code source (CLI, reconnaissance, scan, analyse)
+- `redsentinel/tools/` : Wrappers pour outils externes
+- `redsentinel/osint/` : Sources OSINT
+- `redsentinel/intel/` : Modules d'intelligence
+- `redsentinel/attacks/` : Outils d'exploitation
+- `redsentinel/api/` : Tests de sécurité API
+- `config.yaml` : Configuration par défaut
+- `requirements.txt` : Dépendances Python
+
+## Fonctionnalités Principales
+
+- Reconnaissance et énumération (DNS, sous-domaines, certificats)
+- Scan de ports et services (Nmap, Masscan)
+- Analyse de vulnérabilités (Nuclei, CMS scanners)
+- Intelligence menaces et corrélation de données
+- Tests de sécurité API et applications web
+- Gestion de cibles et monitoring continu
+- Analyses IA pour découverte automatique
+
+## Licence et Utilisation
+
+RedSentinel est destiné à un usage professionnel exclusivement. Toute utilisation non autorisée est strictement interdite et peut engendrer des poursuites légales.
+
+Contact : Alexandre Tavares / Redsentinel
