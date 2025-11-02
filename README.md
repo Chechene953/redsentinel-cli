@@ -306,3 +306,7 @@ redsentinel --help
 - requirements.txt
 
 Voir les commentaires dans les fichiers pour plus de détails sur l'utilisation.
+
+## 📦 Pour les Développeurs
+
+**Créer une nouvelle version** : Voir [VERSION_GUIDE.md](VERSION_GUIDE.md) pour le workflow complet de versionnement.
