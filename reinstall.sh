@@ -6,7 +6,7 @@ set -euo pipefail
 # Banner RedSentinel ASCII
 cat << 'EOF'
 
-                                                              ,╦@Ñ╦,
+                                                               ,╦@Ñ╦,
                                                            ,╔@▓╢╢╢╢╢╢╣@╗,
                                                       ,╓g╬▓╢╢╢╢╢╩╜╙╩▓╢╢╢╢╢▓N╖,
                                               ,╓╓╦@╬▓╢╢╢╢╢╢▓╩╜        ╙╩▓╢╢╢╢╢╢╣▓@g╦╓,,
