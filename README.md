@@ -8,7 +8,10 @@ avec wrappers pour nmap, nuclei, etc.
 > 🔴 **IMPORTANT**: N'utilisez RedSentinel **QUE** sur des cibles pour lesquelles vous avez une **autorisation écrite explicite**.  
 > L'utilisation non autorisée de ces outils peut violer des lois locales et internationales.
 
-**📋 Voir [SECURITY.md](SECURITY.md) pour les détails complets.**
+**📋 Guides :**
+- [SECURITY.md](SECURITY.md) - Politique de sécurité et usage responsable
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Solutions aux problèmes courants
+- [VERSION_GUIDE.md](VERSION_GUIDE.md) - Créer et publier une nouvelle version
 
 ## 🚀 Installation Rapide sur Kali Linux
 
@@ -38,7 +41,8 @@ redsentinel  # Testez l'installation
 ```
 
 > 💡 **Pour mettre à jour une version déjà installée** : `bash update.sh`  
-> 💡 **Si vous avez déjà essayé d'installer et ça ne marche pas** : `bash reinstall.sh`
+> 💡 **Si vous avez déjà essayé d'installer et ça ne marche pas** : `bash reinstall.sh`  
+> 💡 **Pour diagnostiquer des problèmes** : `bash troubleshoot.sh`
 
 ---
 
