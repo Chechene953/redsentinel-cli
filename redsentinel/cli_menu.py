@@ -1266,7 +1266,8 @@ async def do_osint_comprehensive(target):
         task = progress.add_task("[cyan]Gathering OSINT data...", total=None)
         
         # Certificate sources
-        from redsentinel.osint.cert_sources import crtsh_subdomains, all_cert_sources
+        from redsentinel.recon import crtsh_subdomains
+        from redsentinel.osint.cert_sources import all_cert_sources
         subs = await crtsh_subdomains(target)
         
         progress.stop()
@@ -1784,7 +1785,8 @@ def interactive_menu():
                         "timeline_config": {
                             "immediate": 7,
                             "short_term": 30,
-                            "medium_term": 90
+                            "medium_term": 90,
+                            "long_term": 180
                         }
                     }
                     

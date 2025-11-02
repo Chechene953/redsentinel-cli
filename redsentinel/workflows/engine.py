@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 TOOL_MAPPING = {
     "crtsh_subdomains": "redsentinel.recon",
     "enhanced_subdomain_enum": "redsentinel.recon",
-    "scan_ports": "redsentinel.scanner",
+    "scan_ports": "redsentinel.cli_menu.do_portscan",
     "fetch_http_info": "redsentinel.webcheck",
     "nmap_scan_nm": "redsentinel.tools.nmap_wrapper",
     "nuclei_scan": "redsentinel.tools.nuclei_wrapper",
@@ -28,8 +28,17 @@ def import_tool(tool_name):
         raise ValueError(f"Unknown tool: {tool_name}")
     
     module_path = TOOL_MAPPING[tool_name]
-    module = __import__(module_path, fromlist=[tool_name])
-    return getattr(module, tool_name)
+    
+    # Gérer les chemins avec points (ex: redsentinel.cli_menu.do_portscan)
+    if '.' in module_path:
+        parts = module_path.split('.')
+        module = __import__(module_path, fromlist=[parts[-1]])
+        func_name = parts[-1]
+    else:
+        module = __import__(module_path, fromlist=[tool_name])
+        func_name = tool_name
+    
+    return getattr(module, func_name)
 
 
 def substitute_params(params, target):

@@ -172,8 +172,9 @@ class SmartRecommendation:
         ports = findings.get("open_ports", [])
         for port_info in ports:
             port = port_info.get("port")
-            if port in self.recommendations_db["ports"]:
-                recommendations.extend(self.recommendations_db["ports"][port])
+            # Convertir port en string pour le matching
+            if port and str(port) in self.recommendations_db["ports"]:
+                recommendations.extend(self.recommendations_db["ports"][str(port)])
         
         # Remove duplicates
         recommendations = list(set(recommendations))
