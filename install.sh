@@ -35,6 +35,12 @@ else
   exit 1
 fi
 
+# Installer le package en mode développement
+if [ -f setup.py ]; then
+  echo "[*] Installing RedSentinel package in development mode..."
+  pip install -e . --quiet
+fi
+
 if [ ! -f "redsentinel/cli_menu.py" ]; then
   echo "[!] redsentinel/cli_menu.py not found. Add the file and re-run."
   exit 1

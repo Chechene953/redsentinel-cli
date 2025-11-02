@@ -6,15 +6,32 @@ pour lesquelles vous avez une autorisation écrite.
 
 ## 🚀 Installation Rapide sur Kali Linux
 
-**La méthode la plus simple :**
+**Sur Kali Linux récent (2024+), vous avez 2 options :**
+
+### Option 1 : Avec pipx (✅ Recommandé sur Kali)
 
 ```bash
-cd ~/redsentinel-cli  # ou le chemin où se trouve le projet
-sudo pip3 install -e .
+# Installer pipx si ce n'est pas déjà fait
+sudo apt install pipx
+pipx ensurepath
+
+# Installer RedSentinel
+cd ~/redsentinel-cli-main
+pipx install -e .
+
+# Tester
+redsentinel --help
+```
+
+### Option 2 : Installation globale (force)
+
+```bash
+cd ~/redsentinel-cli-main
+sudo pip3 install -e . --break-system-packages
 redsentinel  # Testez l'installation
 ```
 
-C'est tout ! Vous pouvez maintenant utiliser `redsentinel` depuis n'importe où.
+> 💡 **Si vous avez déjà essayé d'installer et ça ne marche pas**, lancez le script `bash reinstall.sh` qui nettoie tout et réinstalle proprement.
 
 ---
 
@@ -31,26 +48,49 @@ sudo apt update
 sudo apt install python3 python3-pip python3-venv nmap git
 ```
 
-### Méthode 1 : Installation via setup.py (La plus simple)
+### Méthode 1 : Installation avec pipx ⭐ RECOMMANDÉE
+
+**pipx** est parfait pour installer des applications CLI Python de façon isolée :
 
 ```bash
-# 1. Clonez ou téléchargez le projet
+# 1. Installez pipx si ce n'est pas déjà fait
+sudo apt install pipx
+pipx ensurepath
+# Note: Redémarrer le terminal ou faire: source ~/.bashrc
+
+# 2. Clonez ou téléchargez le projet
 cd ~
 git clone <votre-repo> redsentinel-cli
 cd redsentinel-cli
 
-# 2. Installez avec pip (installation globale, nécessite sudo)
-sudo pip3 install -e .
-
-# Ou installez dans un environnement virtuel (recommandé)
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
+# 3. Installez avec pipx
+pipx install -e .
 ```
 
-Après cette installation, vous pourrez utiliser `redsentinel` directement depuis n'importe où.
+**Important:** Avec pipx, `redsentinel` est disponible **partout** sur votre système, dans un environnement isolé !
 
-### Méthode 2 : Installation avec le script install.sh
+```bash
+# Testez immédiatement
+redsentinel --help
+
+# Fonctionne de n'importe quel répertoire
+cd ~/Documents
+redsentinel recon example.com
+```
+
+### Méthode 1b : Installation globale avec pip (alternative)
+
+Si vous préférez une installation globale classique :
+
+```bash
+cd ~/redsentinel-cli
+sudo pip3 install -e . --break-system-packages
+redsentinel --help
+```
+
+> **Note:** Sur Kali Linux récent, pipx est généralement préféré. Si vous préférez isoler dans un venv manuel, utilisez la Méthode 2.
+
+### Méthode 3 : Installation avec le script install.sh
 
 ```bash
 # 1. Clonez ou téléchargez le projet
@@ -69,7 +109,7 @@ Le script va :
 
 **Note:** Le script nécessitera votre mot de passe sudo pour créer le launcher global.
 
-### Méthode 3 : Installation Manuelle
+### Méthode 4 : Installation Manuelle
 
 Si vous préférez une installation manuelle sans scripts :
 
@@ -94,9 +134,14 @@ source ~/.bashrc
 
 Pour désinstaller RedSentinel :
 
+**Si installé via pipx :**
+```bash
+pipx uninstall redsentinel
+```
+
 **Si installé via pip :**
 ```bash
-sudo pip3 uninstall redsentinel
+sudo pip3 uninstall redsentinel --break-system-packages
 ```
 
 **Si installé via install.sh :**
@@ -137,6 +182,54 @@ cp config.yaml ~/.redsentinel/config.yaml
 # Ou configuration système (nécessite sudo)
 sudo mkdir -p /etc/redsentinel
 sudo cp config.yaml /etc/redsentinel/config.yaml
+```
+
+### Dépannage
+
+#### Erreur "externally-managed-environment"
+
+Sur Kali Linux récent, vous verrez cette erreur si vous utilisez `pip install` sans les bonnes options.
+
+**Solution :**
+```bash
+# Option 1 : Utilisez pipx (recommandé)
+sudo apt install pipx
+pipx ensurepath
+cd ~/redsentinel-cli-main
+pipx install -e .
+
+# Option 2 : Forcez l'installation globale
+cd ~/redsentinel-cli-main
+sudo pip3 install -e . --break-system-packages
+```
+
+#### Erreur "ModuleNotFoundError: No module named 'redsentinel'"
+
+Si vous voyez cette erreur après avoir utilisé `install.sh`, c'est que le package n'a pas été installé correctement.
+
+**Solution :**
+```bash
+# Nettoyer et réinstaller
+sudo rm /usr/local/bin/redsentinel
+rm -rf ~/redsentinel-auto
+cd ~/redsentinel-cli-main  # ou votre chemin
+bash install.sh  # Le script a été mis à jour pour corriger ce problème
+
+# Ou mieux, utilisez pipx
+pipx install -e .
+```
+
+#### Vérifier l'installation
+
+```bash
+# Vérifier que redsentinel est dans le PATH
+which redsentinel
+
+# Vérifier que le module Python est trouvé
+python3 -c "import redsentinel; print('OK')"
+
+# Tester la commande
+redsentinel --help
 ```
 
 ## Structure
