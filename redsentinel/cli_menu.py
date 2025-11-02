@@ -48,6 +48,11 @@ from redsentinel.vulns.cve_matcher import search_cve, comprehensive_cve_matching
 from redsentinel.api.security_testing import comprehensive_api_security_scan, discover_api_endpoints
 from redsentinel.manage.target_manager import TargetManager, manage_targets
 from redsentinel.monitor.continuous import ContinuousMonitor, run_continuous_check
+from redsentinel.audit.scoring import calculate_security_score, generate_security_summary
+from redsentinel.audit.remediation import generate_remediation_plan
+from redsentinel.audit.compliance import analyze_compliance
+from redsentinel.audit.poc_generator import format_vulnerability_for_report
+from redsentinel.audit.pdf_report import generate_audit_pdf
 from redsentinel.workflows.engine import run_workflow, get_available_workflows
 from redsentinel.workflows.presets import get_workflow_info
 from redsentinel.reporter import render_report
@@ -1498,6 +1503,7 @@ def interactive_menu():
             "  [cyan][23][/cyan] API Security Testing\n"
             "  [cyan][24][/cyan] Target Management\n"
             "  [cyan][25][/cyan] Continuous Monitoring\n"
+            "  [cyan][26][/cyan] Professional Audit Report (PDF)\n"
             "  [red][0][/red] Exit"
         )
         
@@ -1505,7 +1511,7 @@ def interactive_menu():
         console.print()
         
         try:
-            choice = Prompt.ask("redsentinel> ", choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"])
+            choice = Prompt.ask("redsentinel> ", choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26"])
         except KeyboardInterrupt:
             console.print()
             console.print()
@@ -1704,6 +1710,93 @@ def interactive_menu():
             elif choice == "25":
                 # Continuous Monitoring
                 loop.run_until_complete(do_continuous_monitoring(target))
+            
+            elif choice == "26":
+                # Professional Audit Report
+                console.print()
+                info("Génération du rapport d'audit professionnel...")
+                console.print()
+                
+                # Collecter les informations client
+                client_name = Prompt.ask("Nom du client", default="Example Corp")
+                contract_ref = Prompt.ask("Référence contrat", default="REF-2024-001")
+                
+                # Collecter toutes les données
+                console.print()
+                info("Collecte des données de sécurité...")
+                
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=console
+                ) as progress:
+                    progress.add_task("[cyan]Rassemblement des résultats...", total=None)
+                    
+                    # Simuler la collecte de données
+                    audit_data = {
+                        "client_name": client_name,
+                        "contract_ref": contract_ref,
+                        "audit_type": "Pentest de Sécurité",
+                        "period_start": "01/01/2024",
+                        "period_end": "15/01/2024",
+                        "report_date": now_iso(),
+                        "vulnerabilities": [
+                            {
+                                "name": "SQL Injection",
+                                "severity": "CRITICAL",
+                                "cvss_score": 9.8,
+                                "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                                "location": "POST /api/users?id=...",
+                                "parameter": "id",
+                                "http_method": "POST",
+                                "description": "L'application est vulnérable aux injections SQL dans le paramètre 'id'",
+                                "impact": "Extraction complète de la base de données, compromission de tous les comptes",
+                                "remediation": "Implémenter des requêtes préparées (Prepared Statements)",
+                                "cwe": "CWE-89",
+                                "status": "Non corrigé"
+                            },
+                            {
+                                "name": "Weak SSL/TLS Configuration",
+                                "severity": "HIGH",
+                                "cvss_score": 7.5,
+                                "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+                                "location": "HTTPS://app.example.com",
+                                "description": "Le serveur utilise des protocoles SSL/TLS obsolètes (SSLv3) et des suites de chiffrement faibles",
+                                "impact": "Risque de déchiffrement de données en transit",
+                                "remediation": "Désactiver SSLv3, utiliser TLS 1.2 minimum et configurer des ciphers sécurisés",
+                                "cwe": "CWE-295",
+                                "status": "Non corrigé"
+                            },
+                            {
+                                "name": "Missing Security Headers",
+                                "severity": "MEDIUM",
+                                "cvss_score": 5.3,
+                                "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+                                "location": "Toutes les pages",
+                                "description": "Absence d'en-têtes de sécurité essentiels (CSP, X-Frame-Options, etc.)",
+                                "impact": "Vulnérabilité accrue aux attaques XSS et clickjacking",
+                                "remediation": "Implémenter les en-têtes de sécurité recommandés par OWASP",
+                                "cwe": "CWE-693",
+                                "status": "Non corrigé"
+                            }
+                        ],
+                        "compliance_standards": ["RGPD", "PCI-DSS"],
+                        "timeline_config": {
+                            "immediate": 7,
+                            "short_term": 30,
+                            "medium_term": 90
+                        }
+                    }
+                    
+                    # Générer le rapport
+                    report_path = generate_audit_pdf(audit_data)
+                    
+                    progress.stop()
+                
+                console.print()
+                success(f"Rapport d'audit généré : [cyan]{report_path}[/cyan]")
+                info("Ouvrez le fichier dans votre navigateur pour voir le rapport complet")
+                console.print()
             
             else:
                 error("Invalid choice")

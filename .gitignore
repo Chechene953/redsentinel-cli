@@ -64,3 +64,10 @@ env/
 *.pyc
 *.pyo
 
+# Internal documentation (not for public)
+ROADMAP.md
+AUDIT_TEMPLATES.md
+RELEASE_V6.md
+AUDIT.md
+POA.md
+.cursorrules

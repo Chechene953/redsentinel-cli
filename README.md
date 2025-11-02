@@ -121,6 +121,7 @@ bash reinstall.sh
 - `redsentinel/intel/` : Modules d'intelligence
 - `redsentinel/attacks/` : Outils d'exploitation
 - `redsentinel/api/` : Tests de sécurité API
+- `redsentinel/owasp/` : Mapping OWASP Top 10
 - `config.yaml` : Configuration par défaut
 - `requirements.txt` : Dépendances Python
 
@@ -129,6 +130,7 @@ bash reinstall.sh
 - Reconnaissance et énumération (DNS, sous-domaines, certificats)
 - Scan de ports et services (Nmap, Masscan)
 - Analyse de vulnérabilités (Nuclei, CMS scanners)
+- Classification OWASP Top 10 2021 automatique
 - Intelligence menaces et corrélation de données
 - Tests de sécurité API et applications web
 - Gestion de cibles et monitoring continu
