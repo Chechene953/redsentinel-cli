@@ -141,4 +141,5 @@ bash reinstall.sh
 RedSentinel est destiné à un usage professionnel exclusivement. Toute utilisation non autorisée est strictement interdite et peut engendrer des poursuites légales.
 
 Contact : Alexandre Tavares / Redsentinel
-redsentinel.fr
+
+<a href="https://redsentinel.fr"></a>
