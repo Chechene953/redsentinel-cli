@@ -1467,8 +1467,9 @@ def interactive_menu():
     
     # Site web
     console.print(Panel.fit(
-        "[bold cyan]🌐 redsentinel.fr[/bold cyan]",
-        border_style="cyan",
+        "[bold magenta]🌐 Visitez notre site :[/bold magenta]\n"
+        "[bold cyan underline]https://redsentinel.fr[/bold cyan underline]",
+        border_style="magenta",
         padding=(0, 3)
     ))
     console.print()
