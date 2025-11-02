@@ -160,61 +160,31 @@ def debug(msg: str):
 
 
 # Print banner
-def print_banner(banner_type: str = "main", show_logo: bool = True):
+def print_banner(banner_type: str = "main", show_logo: bool = False):
     """Affiche le banner RedSentinel centré avec bordure ASCII et logo"""
     from rich.text import Text
-    from rich.panel import Panel
     
-    console.print("\n")
+    console.print("\n", end="")
+    
+    # Si on affiche le logo et c'est le main banner
+    if banner_type == "main" and show_logo:
+        # Afficher le logo au-dessus
+        logo_top = design.banners.get("logo_top", "")
+        if logo_top:
+            console.print(logo_top.replace("\\n", "\n"), style="bold red")
+            console.print()
     
     # Créer le banner complet
     banner = get_banner(banner_type)
     banner_lines = banner.strip().split('\n')
     
+    # Afficher le banner simple sans Panel (comme cli_example.py)
+    console.print("\n".join(banner_lines), style="bold red")
+    
     # Ajouter le sous-titre si main banner
     if banner_type == "main":
         subtitle = design.banners.get("main_subtitle", "🔴 CYBERSECURITY | PENTEST | RED TEAM TOOLKIT")
-        banner_lines.append("")
-        banner_lines.append(subtitle)
-    
-    # Si on affiche le logo et c'est le main banner
-    if banner_type == "main" and show_logo:
-        logo = get_logo("ascii")
-        logo_lines = logo.strip().split('\n')
-        
-        # Créer des lignes combinées (logo + banner)
-        max_lines = max(len(banner_lines), len(logo_lines))
-        combined_lines = []
-        
-        for i in range(max_lines):
-            logo_line = logo_lines[i] if i < len(logo_lines) else " " * len(logo_lines[0] if logo_lines else "")
-            banner_line = banner_lines[i] if i < len(banner_lines) else ""
-            
-            # Combiner avec espacement
-            combined_line = f"{logo_line}  {banner_line}".rstrip()
-            combined_lines.append(combined_line)
-        
-        full_banner = "\n".join(combined_lines)
-    else:
-        # Reconstruire le banner avec toutes les lignes
-        full_banner = "\n".join(banner_lines)
-    
-    # Centrer avec Rich et ajouter une bordure style cyberpunk
-    if banner_type == "main":
-        # Utiliser Panel pour une bordure stylée
-        panel = Panel(
-            Text(full_banner, style="bold red"),
-            border_style="bold red",
-            box=box.HEAVY,
-            padding=(1, 2),
-            expand=False
-        )
-        centered_panel = Align.center(panel)
-        console.print(centered_panel)
-    else:
-        # Pour les autres bannières, affichage simple
-        for line in banner_lines:
-            console.print(Text(line, style="bold red"))
+        console.print(subtitle, style="bold red")
     
     console.print()
 

@@ -293,7 +293,7 @@ async def do_nmap_scan(hosts, args=None):
 
 def interactive_menu():
     """Menu interactif principal"""
-    print_banner()
+    print_banner(show_logo=True)  # Afficher le logo ASCII au-dessus du titre
     
     # Vérifier les mises à jour disponibles (au démarrage)
     try:
