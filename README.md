@@ -1,8 +1,14 @@
 # RedSentinel Automation Prototype
 
+**⚠️ OUTIL DE SÉCURITÉ / PENTEST - USAGE RESPONSABLE UNIQUEMENT**
+
 Cette archive contient un prototype d'outil d'automatisation pour tâches de reconnaissance et scan,
-avec wrappers pour nmap, nuclei, etc. UTILISATION LÉGALE SEULEMENT: n'exécutez ces outils que sur des cibles
-pour lesquelles vous avez une autorisation écrite.
+avec wrappers pour nmap, nuclei, etc.
+
+> 🔴 **IMPORTANT**: N'utilisez RedSentinel **QUE** sur des cibles pour lesquelles vous avez une **autorisation écrite explicite**.  
+> L'utilisation non autorisée de ces outils peut violer des lois locales et internationales.
+
+**📋 Voir [SECURITY.md](SECURITY.md) pour les détails complets.**
 
 ## 🚀 Installation Rapide sur Kali Linux
 
@@ -59,7 +65,7 @@ sudo apt install pipx
 pipx ensurepath
 # Note: Redémarrer le terminal ou faire: source ~/.bashrc
 
-# 2. Clonez ou téléchargez le projet
+# 2. Clonez ou téléchargez le projet (public ou privé)
 cd ~
 git clone <votre-repo> redsentinel-cli
 cd redsentinel-cli
@@ -68,7 +74,10 @@ cd redsentinel-cli
 pipx install -e .
 ```
 
-**Important:** Avec pipx, `redsentinel` est disponible **partout** sur votre système, dans un environnement isolé !
+**Important:** 
+- Avec pipx, `redsentinel` est disponible **partout** sur votre système, dans un environnement isolé
+- L'installation en mode développement (`-e`) garde le lien avec le repo Git, permettant les **mises à jour auto**
+- Fonctionne avec repos **public ET privé** - le système de mise à jour auto s'adapte
 
 ```bash
 # Testez immédiatement
@@ -145,6 +154,8 @@ Lorsque vous lancez `redsentinel`, le programme :
 5. 🔄 Vous recommande de redémarrer pour appliquer les changements
 
 > **Note :** La vérification est **silencieuse** si votre version est à jour - vous ne verrez aucun message.
+
+> **🔒 Repo Privé :** La vérification de mise à jour fonctionne parfaitement avec un repo Git **privé** ! Avec `pipx install -e .`, le code source reste lié au repo Git original (même en privé), donc les mises à jour auto fonctionnent.
 
 #### 📝 Mise à jour manuelle
 
