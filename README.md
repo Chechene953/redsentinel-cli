@@ -1,4 +1,4 @@
-# RedSentinel - Outil de Sécurité Professionnel
+# RedSentinel-CLI - Outil de Sécurité Professionnel
 
 **OUTIL DE SÉCURITÉ / PENTEST - USAGE PROFESSIONNEL UNIQUEMENT**
 
