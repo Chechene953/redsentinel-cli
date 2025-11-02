@@ -1465,6 +1465,14 @@ def interactive_menu():
     ))
     console.print()
     
+    # Site web
+    console.print(Panel.fit(
+        "[bold cyan]🌐 redsentinel.fr[/bold cyan]",
+        border_style="cyan",
+        padding=(0, 3)
+    ))
+    console.print()
+    
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
