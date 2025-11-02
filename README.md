@@ -133,7 +133,22 @@ source ~/.bashrc
 
 ### Mise à jour
 
-Si vous avez déjà installé RedSentinel et voulez mettre à jour vers la dernière version :
+RedSentinel vérifie **automatiquement** les mises à jour disponibles à chaque lancement !
+
+#### 🔄 Mise à jour automatique (au lancement)
+
+Lorsque vous lancez `redsentinel`, le programme :
+1. ✅ Vérifie s'il y a une nouvelle version disponible sur Git
+2. 📢 Vous avertit uniquement **s'il y a une mise à jour disponible**
+3. 🤔 Vous propose de mettre à jour automatiquement
+4. ⚙️ Si vous acceptez, lance `git pull` pour récupérer les nouvelles versions
+5. 🔄 Vous recommande de redémarrer pour appliquer les changements
+
+> **Note :** La vérification est **silencieuse** si votre version est à jour - vous ne verrez aucun message.
+
+#### 📝 Mise à jour manuelle
+
+Vous pouvez également mettre à jour manuellement :
 
 ```bash
 cd ~/redsentinel-cli-main  # ou votre répertoire du projet

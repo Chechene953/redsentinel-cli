@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
 from setuptools import setup, find_packages
+import sys
+from pathlib import Path
+
+# Ajouter le répertoire redsentinel au path pour importer la version
+sys.path.insert(0, str(Path(__file__).parent))
+from redsentinel.version import __version__
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -10,7 +16,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="redsentinel",
-    version="1.0.0",
+    version=__version__,
     author="RedSentinel Team",
     description="RedSentinel automation tool for reconnaissance and scanning",
     long_description=long_description,

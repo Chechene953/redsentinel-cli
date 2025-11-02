@@ -295,6 +295,14 @@ def interactive_menu():
     """Menu interactif principal"""
     print_banner()
     
+    # Vérifier les mises à jour disponibles (au démarrage)
+    try:
+        from redsentinel.version import check_update_and_prompt
+        check_update_and_prompt(console)
+    except Exception:
+        # Si la vérification échoue, continuer silencieusement
+        pass
+    
     # Welcome panel
     console.print(Panel.fit(
         "[bold red]RedSentinel CLI[/bold red]\n\n"
@@ -419,6 +427,35 @@ def interactive_menu():
 
 def main():
     """Point d'entrée principal"""
+    # Support des arguments de ligne de commande simples
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].lower()
+        if arg in ["--version", "-v"]:
+            try:
+                from redsentinel import __version__, get_version_info
+                info = get_version_info()
+                print(f"RedSentinel v{__version__}")
+                if info.get("commit"):
+                    print(f"Commit: {info['commit']}")
+            except Exception:
+                print("RedSentinel v1.0.0")
+            return
+        elif arg in ["--help", "-h"]:
+            print_banner()
+            console.print()
+            console.print(Panel.fit(
+                "[bold red]RedSentinel CLI[/bold red]\n\n"
+                "Usage: [cyan]redsentinel[/cyan] [options]\n\n"
+                "Options:\n"
+                "  [cyan]-h, --help[/cyan]     Afficher cette aide\n"
+                "  [cyan]-v, --version[/cyan]  Afficher la version\n\n"
+                "Launch interactive menu:\n"
+                "  [yellow]redsentinel[/yellow]",
+                border_style="red"
+            ))
+            console.print()
+            return
+    
     interactive_menu()
 
 
