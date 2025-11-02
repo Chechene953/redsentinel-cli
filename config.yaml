@@ -20,7 +20,7 @@ tools:
     rate: 1000
 
 execution:
-  dry_run: false
+  dry_run: true
   concurrency: 10
   max_runtime_seconds: 600
   throttle_seconds_between_tools: 1
