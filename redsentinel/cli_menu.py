@@ -1,8 +1,28 @@
-# redsentinel/cli_menu.py
-import argparse
+#!/usr/bin/env python3
+"""
+RedSentinel CLI - Interface principale avec design stylé
+"""
+
 import asyncio
 import sys
 import time
+
+from rich.table import Table
+from rich.progress import Progress, BarColumn, SpinnerColumn, TextColumn
+from rich.panel import Panel
+from rich.prompt import Prompt
+
+# Import du design system
+from redsentinel.design import (
+    console,
+    print_banner,
+    success,
+    error,
+    warning,
+    info,
+    get_table_config,
+    get_progress_spinners,
+)
 
 from redsentinel.recon import crtsh_subdomains
 from redsentinel.scanner import scan_ports
@@ -11,140 +31,321 @@ from redsentinel.tools.nmap_wrapper import nmap_scan_nm
 from redsentinel.reporter import render_report
 from redsentinel.utils import load_config, now_iso
 
+# Configuration
 cfg = load_config()
 
-def print_heading(t):
-    print("\n" + "="*len(t))
-    print(t)
-    print("="*len(t))
 
 async def do_recon(target):
-    print_heading(f"Recon: {target}")
-    subs = await crtsh_subdomains(target)
-    print(f"Found {len(subs)} subdomains")
-    for s in subs[:50]:
-        print(" -", s)
+    """Fonction de reconnaissance subdomain"""
+    panel = Panel.fit(
+        f"[bold]REDSENTINEL > SUBDOMAIN ENUMERATION[/bold]\n\n"
+        f"Target: [yellow]{target}[/yellow]",
+        border_style="red"
+    )
+    console.print(panel)
+    console.print()
+    
+    info(f"Starting enumeration for [yellow]{target}[/yellow]...")
+    
+    # Progress bar
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Querying certificate transparency logs...", total=None)
+        subs = await crtsh_subdomains(target)
+        progress.stop()
+    
+    console.print()
+    success(f"Found {len(subs)} subdomains")
+    console.print()
+    
+    # Display first 50 subdomains
+    if subs:
+        table_config = get_table_config()
+        table = Table(show_header=False, border_style=table_config["border_style"], 
+                     box=None, padding=(0, 2))
+        table.add_column("Subdomain", style="cyan")
+        
+        for sub in subs[:50]:
+            table.add_row(f"  • {sub}")
+        
+        console.print(table)
+    else:
+        warning("No subdomains found")
+    
     return subs
 
+
 async def do_portscan(targets, ports=None):
+    """Fonction de scan de ports"""
     ports = ports or [80, 443, 22, 21, 3306, 6379, 8080, 8443]
     results = {}
+    
+    console.print()
+    info(f"Scanning [yellow]{len(targets)}[/yellow] host(s) on [yellow]{len(ports)}[/yellow] port(s)")
+    console.print()
+    
+    # Progress bar
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Scanning ports...", total=len(targets))
+        
+        for h in targets:
+            r = await scan_ports(h, ports)
+            results[h] = r
+            progress.advance(task)
+    
+    console.print()
+    
+    # Results table
+    table_config = get_table_config()
+    table = Table(show_header=True, header_style=table_config["header_style"], 
+                  border_style=table_config["border_style"])
+    table.add_column("Host", style="cyan", width=30)
+    table.add_column("Open Ports", style="green", width=40)
+    
     for h in targets:
-        print(f"[scan] {h}")
-        r = await scan_ports(h, ports)
-        results[h] = r
-        open_ports = [p for p,o in r.items() if o]
-        print("  open:", open_ports)
+        open_ports = [str(p) for p, o in results[h].items() if o]
+        if open_ports:
+            table.add_row(h, ", ".join(open_ports))
+        else:
+            table.add_row(h, "[dim]None[/dim]")
+    
+    console.print(table)
+    
+    total_open = sum(1 for r in results.values() for p, o in r.items() if o)
+    console.print()
+    success(f"Scan completed: {total_open} open port(s) found")
+    
     return results
+
 
 async def do_webchecks(hosts):
+    """Fonction de vérification web"""
     import aiohttp
+    
+    console.print()
+    info(f"Performing HTTP checks on [yellow]{len(hosts)}[/yellow] host(s)")
+    console.print()
+    
     results = []
     async with aiohttp.ClientSession() as sess:
-        for h in hosts:
-            url = f"https://{h}"
-            print("[http] fetching", url)
-            r = await fetch_http_info(url, session=sess)
-            results.append(r)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[cyan]Fetching HTTP information...", total=len(hosts))
+            
+            for h in hosts:
+                try:
+                    url = f"https://{h}"
+                    progress.update(task, description=f"[cyan]Checking [yellow]{h}[/yellow]...")
+                    r = await fetch_http_info(url, session=sess)
+                    results.append(r)
+                except Exception:
+                    url = f"http://{h}"
+                    r = await fetch_http_info(url, session=sess)
+                    results.append(r)
+                progress.advance(task)
+    
+    console.print()
+    
+    # Results table
+    table_config = get_table_config()
+    table = Table(show_header=True, header_style=table_config["header_style"], 
+                  border_style=table_config["border_style"])
+    table.add_column("Host", style="cyan")
+    table.add_column("Status", style="green")
+    table.add_column("Server", style="yellow")
+    
+    for r in results:
+        host = r.get('url', 'Unknown')
+        status = r.get('status', 'Unknown')
+        server = r.get('server', 'Unknown')
+        table.add_row(host, str(status), server)
+    
+    console.print(table)
+    
     return results
 
-def build_argparser():
-    p = argparse.ArgumentParser(prog="redsentinel", description="RedSentinel automation tool")
-    sub = p.add_subparsers(dest="cmd")
 
-    r = sub.add_parser("recon", help="recon (crt.sh) subdomains")
-    r.add_argument("target", help="target domain")
+async def do_nmap_scan(hosts, args=None):
+    """Fonction de scan nmap"""
+    console.print()
+    info(f"Starting Nmap scan on [yellow]{', '.join(hosts)}[/yellow]")
+    
+    nmap_args = args or cfg.get("tools", {}).get("nmap", {}).get("args", "-sC -sV -T4")
+    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    
+    if dry_run:
+        warning("Dry-run mode: skipping actual Nmap scan")
+        console.print()
+        console.print(Panel.fit(
+            "[bold yellow]DRY RUN MODE[/bold yellow]\n\n"
+            f"Would execute: [cyan]nmap {nmap_args} {' '.join(hosts)}[/cyan]",
+            border_style="yellow"
+        ))
+        return {"dry_run": True, "hosts": hosts, "args": nmap_args}
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Running Nmap scan...", total=None)
+        res = nmap_scan_nm(hosts, args=nmap_args, dry_run=dry_run)
+        progress.stop()
+    
+    console.print()
+    
+    if isinstance(res, dict):
+        console.print(Panel.fit(
+            f"[bold]Nmap Results[/bold]\n\n"
+            f"[cyan]{res}[/cyan]",
+            border_style="cyan"
+        ))
+    else:
+        info(f"Results: {res}")
+    
+    return res
 
-    s = sub.add_parser("scan", help="quick port scan (tcp connect)")
-    s.add_argument("target", help="target domain or host")
-    s.add_argument("--ports", help="comma separated ports", default="80,443,22,8080")
-
-    n = sub.add_parser("nmap", help="run nmap wrapper (requires nmap installed)")
-    n.add_argument("target", help="target domain or comma-separated hosts")
-    n.add_argument("--args", help="nmap args override", default=None)
-
-    w = sub.add_parser("webcheck", help="simple http checks")
-    w.add_argument("target", help="target host")
-
-    m = sub.add_parser("menu", help="interactive menu")
-
-    return p
 
 def interactive_menu():
-    loop = asyncio.get_event_loop()
+    """Menu interactif principal"""
+    print_banner()
+    
+    # Welcome panel
+    console.print(Panel.fit(
+        "[bold red]RedSentinel CLI[/bold red]\n\n"
+        "[cyan]Cybersecurity & Pentest Toolkit[/cyan]\n\n"
+        "Select an option to begin:",
+        border_style="red"
+    ))
+    console.print()
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     while True:
-        print("\nRedSentinel — Menu")
-        print("1) Recon (crt.sh)")
-        print("2) Quick port scan")
-        print("3) Nmap scan")
-        print("4) Web checks")
-        print("5) Generate HTML report (basic)")
-        print("0) Quit")
+        console.print()
+        # Menu panel
+        menu_text = (
+            "[bold]Available Commands:[/bold]\n\n"
+            "  [cyan][1][/cyan] Subdomain Enumeration (crt.sh)\n"
+            "  [cyan][2][/cyan] Quick Port Scan (TCP Connect)\n"
+            "  [cyan][3][/cyan] Nmap Scan (Service Detection)\n"
+            "  [cyan][4][/cyan] Web HTTP Checks\n"
+            "  [cyan][5][/cyan] Generate HTML Report\n"
+            "  [red][0][/red] Exit"
+        )
+        
+        console.print(Panel(menu_text, border_style="cyan"))
+        console.print()
+        
         try:
-            choice = input("Choix > ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return
+            choice = Prompt.ask("redsentinel> ", choices=["0", "1", "2", "3", "4", "5"])
+        except KeyboardInterrupt:
+            console.print()
+            console.print()
+            info("Exiting...")
+            console.print()
+            break
+        
         if choice == "0":
-            return
-        target = input("Target (ex: example.com) > ").strip()
-        if not target:
-            print("Target requis")
-            continue
+            console.print()
+            info("Goodbye!")
+            console.print()
+            break
+        
+        try:
+            target = Prompt.ask("Target", default="example.com").strip()
+            if not target or target == "":
+                error("Target is required")
+                continue
+            
+            if choice == "1":
+                console.print()
+                loop.run_until_complete(do_recon(target))
+                console.print()
+            
+            elif choice == "2":
+                ports_input = Prompt.ask("Ports (comma-separated)", default="80,443,22,8080")
+                ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
+                
+                console.print()
+                info("Fetching subdomains first...")
+                subs = loop.run_until_complete(do_recon(target))
+                hosts = [target] + subs[:20]
+                
+                console.print()
+                loop.run_until_complete(do_portscan(hosts, ports))
+            
+            elif choice == "3":
+                args_input = Prompt.ask("Nmap args (press Enter for defaults)", default="")
+                nmap_args = args_input if args_input else None
+                hosts = [target]
+                loop.run_until_complete(do_nmap_scan(hosts, nmap_args))
+            
+            elif choice == "4":
+                loop.run_until_complete(do_webchecks([target]))
+            
+            elif choice == "5":
+                console.print()
+                info("Generating comprehensive report...")
+                console.print()
+                
+                # Progress for full report
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=console
+                ) as progress:
+                    progress.add_task("[cyan]Collecting data...", total=None)
+                    
+                    subs = loop.run_until_complete(do_recon(target))
+                    hosts = [target] + subs[:20]
+                    ports_res = loop.run_until_complete(do_portscan(hosts))
+                    
+                    progress.update(progress.task_ids[0], description="[cyan]Fetching web information...")
+                    http = loop.run_until_complete(do_webchecks(hosts))
+                    
+                    progress.update(progress.task_ids[0], description="[cyan]Generating report...")
+                    html = render_report(target, subs, ports_res.get(target, {}), http)
+                    
+                    fn = f"report_{target}.html"
+                    with open(fn, "w", encoding="utf-8") as f:
+                        f.write(html)
+                    
+                    progress.stop()
+                
+                console.print()
+                success(f"Report saved to: [cyan]{fn}[/cyan]")
+                info(f"Open it in your browser to view the full report")
+            
+            else:
+                error("Invalid choice")
+        
+        except KeyboardInterrupt:
+            console.print()
+            warning("Operation cancelled by user")
+        
+        except Exception as e:
+            console.print()
+            error(f"Error: {str(e)}")
+            import traceback
+            console.print(f"[dim]{traceback.format_exc()}[/dim]")
 
-        if choice == "1":
-            loop.run_until_complete(do_recon(target))
-        elif choice == "2":
-            ports_s = input("Ports (comma) [80,443,22] > ").strip() or "80,443,22"
-            ports = [int(p.strip()) for p in ports_s.split(",") if p.strip()]
-            subs = loop.run_until_complete(do_recon(target))
-            hosts = [target] + subs[:20]
-            loop.run_until_complete(do_portscan(hosts, ports))
-        elif choice == "3":
-            args = input("Nmap args (enter for defaults) > ").strip() or None
-            hosts = [target]
-            print("Lancement nmap (cela utilise python-nmap wrapper).")
-            res = nmap_scan_nm(hosts, args=args or cfg.get("tools",{}).get("nmap",{}).get("args","-sC -sV -T4"), dry_run=cfg.get("execution",{}).get("dry_run", True))
-            print("Result:", res if isinstance(res, dict) else str(res))
-        elif choice == "4":
-            loop.run_until_complete(do_webchecks([target]))
-        elif choice == "5":
-            subs = loop.run_until_complete(do_recon(target))
-            hosts = [target] + subs[:20]
-            ports_res = loop.run_until_complete(do_portscan(hosts))
-            http = loop.run_until_complete(do_webchecks(hosts))
-            html = render_report(target, subs, ports_res.get(target, {}), http)
-            fn = f"report_{target}.html"
-            with open(fn, "w", encoding="utf-8") as f:
-                f.write(html)
-            print("Report saved to", fn)
-        else:
-            print("Choice invalide")
 
 def main():
-    parser = build_argparser()
-    args = parser.parse_args()
-    if args.cmd is None:
-        interactive_menu()
-        return
+    """Point d'entrée principal"""
+    interactive_menu()
 
-    loop = asyncio.get_event_loop()
-    if args.cmd == "recon":
-        loop.run_until_complete(do_recon(args.target))
-    elif args.cmd == "scan":
-        ports = [int(p) for p in args.ports.split(",") if p.strip()]
-        subs = loop.run_until_complete(do_recon(args.target))
-        hosts = [args.target] + subs[:20]
-        loop.run_until_complete(do_portscan(hosts, ports))
-    elif args.cmd == "nmap":
-        hosts = args.target.split(",")
-        nmap_args = args.args or cfg.get("tools",{}).get("nmap",{}).get("args", "-sC -sV -T4")
-        res = nmap_scan_nm(hosts, args=nmap_args, dry_run=cfg.get("execution",{}).get("dry_run", True))
-        print(res)
-    elif args.cmd == "webcheck":
-        loop.run_until_complete(do_webchecks([args.target]))
-    else:
-        parser.print_help()
 
 if __name__ == "__main__":
     main()

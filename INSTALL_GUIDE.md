@@ -84,11 +84,41 @@ cp config.yaml ~/.redsentinel/config.yaml
 # Éditez ~/.redsentinel/config.yaml selon vos besoins
 ```
 
+## Mise à jour
+
+Si vous avez déjà installé une ancienne version et voulez mettre à jour :
+
+```bash
+cd ~/redsentinel-cli-main
+bash update.sh
+```
+
+Le script `update.sh` détecte automatiquement votre méthode d'installation et met à jour proprement.
+
+**Mise à jour manuelle :**
+
+```bash
+# Si installé via pipx
+pipx reinstall redsentinel
+
+# Si installé via pip
+cd ~/redsentinel-cli-main
+sudo pip3 install -e . --upgrade --break-system-packages
+
+# Si installé via install.sh
+bash reinstall.sh
+```
+
 ## Désinstallation
 
-**Si installé via setup.py :**
+**Si installé via setup.py/pip :**
 ```bash
-sudo pip3 uninstall redsentinel
+sudo pip3 uninstall redsentinel --break-system-packages
+```
+
+**Si installé via pipx :**
+```bash
+pipx uninstall redsentinel
 ```
 
 **Si installé via install.sh :**

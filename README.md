@@ -31,7 +31,8 @@ sudo pip3 install -e . --break-system-packages
 redsentinel  # Testez l'installation
 ```
 
-> 💡 **Si vous avez déjà essayé d'installer et ça ne marche pas**, lancez le script `bash reinstall.sh` qui nettoie tout et réinstalle proprement.
+> 💡 **Pour mettre à jour une version déjà installée** : `bash update.sh`  
+> 💡 **Si vous avez déjà essayé d'installer et ça ne marche pas** : `bash reinstall.sh`
 
 ---
 
@@ -128,6 +129,37 @@ pip install -r requirements.txt
 # 4. (Optionnel) Créez un alias dans votre .bashrc ou .zshrc
 echo 'alias redsentinel="cd ~/redsentinel-cli && source .venv/bin/activate && python -m redsentinel.cli_menu"' >> ~/.bashrc
 source ~/.bashrc
+```
+
+### Mise à jour
+
+Si vous avez déjà installé RedSentinel et voulez mettre à jour vers la dernière version :
+
+```bash
+cd ~/redsentinel-cli-main  # ou votre répertoire du projet
+bash update.sh
+```
+
+Le script détecte automatiquement votre méthode d'installation et met à jour proprement.
+
+> **Note :** Si vous utilisez un repo Git privé, le script `update.sh` vous demandera si vous voulez faire un `git pull`. Vous pouvez refuser et utiliser les fichiers locaux que vous avez déjà téléchargés.
+
+**Mise à jour manuelle selon votre méthode :**
+
+```bash
+# Si installé via pipx
+pipx reinstall redsentinel
+
+# Ou pour forcer la réinstallation complète
+pipx uninstall redsentinel
+pipx install -e .
+
+# Si installé via pip
+cd ~/redsentinel-cli-main
+sudo pip3 install -e . --upgrade --break-system-packages
+
+# Si installé via install.sh (réinstallation complète)
+bash reinstall.sh
 ```
 
 ### Désinstallation

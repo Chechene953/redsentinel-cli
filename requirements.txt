@@ -6,4 +6,5 @@ pyyaml
 python-magic
 python-nmap
 rich
+click
 sqlalchemy
