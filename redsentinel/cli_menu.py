@@ -48,14 +48,8 @@ from redsentinel.vulns.cve_matcher import search_cve, comprehensive_cve_matching
 from redsentinel.api.security_testing import comprehensive_api_security_scan, discover_api_endpoints
 from redsentinel.manage.target_manager import TargetManager, manage_targets
 from redsentinel.monitor.continuous import ContinuousMonitor, run_continuous_check
-from redsentinel.audit.scoring import calculate_security_score, generate_security_summary
-from redsentinel.audit.remediation import generate_remediation_plan
-from redsentinel.audit.compliance import analyze_compliance
-from redsentinel.audit.poc_generator import format_vulnerability_for_report
-from redsentinel.audit.pdf_report import generate_audit_pdf
 from redsentinel.workflows.engine import run_workflow, get_available_workflows
 from redsentinel.workflows.presets import get_workflow_info
-from redsentinel.reporter import render_report
 from redsentinel.utils import load_config, now_iso
 
 # Configuration
@@ -283,7 +277,7 @@ async def do_nmap_scan(hosts, args=None):
     info(f"Starting Nmap scan on [yellow]{', '.join(hosts)}[/yellow]")
     
     nmap_args = args or cfg.get("tools", {}).get("nmap", {}).get("args", "-sC -sV -T4")
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual Nmap scan")
@@ -331,7 +325,7 @@ async def do_nuclei_scan(targets, templates=None, severity=None):
         info("Or download from: https://github.com/projectdiscovery/nuclei/releases")
         return None
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual Nuclei scan")
@@ -356,7 +350,7 @@ async def do_nuclei_scan(targets, templates=None, severity=None):
         console=console
     ) as progress:
         task = progress.add_task("[cyan]Running Nuclei scan...", total=None)
-        res = nuclei_scan(targets, args=nuclei_args, dry_run=False)
+        res = nuclei_scan(targets, args=nuclei_args, dry_run=dry_run)
         progress.stop()
     
     console.print()
@@ -422,7 +416,7 @@ async def do_ffuf_scan(target_url, wordlist=None, extensions=None):
     info(f"Starting Directory Brute Force on [yellow]{target_url}[/yellow]")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual ffuf scan")
@@ -611,7 +605,7 @@ async def do_nikto_scan(target_url):
     info(f"Starting Nikto web vulnerability scan on [yellow]{target_url}[/yellow]")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual Nikto scan")
@@ -686,7 +680,7 @@ async def do_workflow(workflow_name, target):
         ))
         console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual workflow execution")
@@ -752,7 +746,7 @@ async def do_cms_scan(url):
     info(f"Starting CMS detection and scan on [yellow]{url}[/yellow]")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual CMS scan")
@@ -810,7 +804,7 @@ async def do_cloud_scan(domain):
     info(f"Starting cloud infrastructure scan on [yellow]{domain}[/yellow]")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual cloud scan")
@@ -861,7 +855,7 @@ async def do_threat_intel(ip_or_domain):
     info(f"Gathering threat intelligence for [yellow]{ip_or_domain}[/yellow]")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: threat intelligence requires API keys")
@@ -931,7 +925,7 @@ async def do_masscan(host, ports="1-65535"):
         error("Masscan requires root privileges! Run with sudo")
         return None
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual Masscan")
@@ -989,7 +983,7 @@ async def do_password_attack(target, protocol, credentials=None):
     info(f"Starting password attack on [yellow]{target}[/yellow] ({protocol})")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual password attack")
@@ -1051,7 +1045,7 @@ async def do_exploit_search(service, version=None):
         info(f"Version: [yellow]{version}[/yellow]")
     console.print()
     
-    dry_run = cfg.get("execution", {}).get("dry_run", True)
+    dry_run = cfg.get("execution", {}).get("dry_run", False)
     
     if dry_run:
         warning("Dry-run mode: skipping actual exploit search")
@@ -1466,7 +1460,7 @@ def interactive_menu():
     console.print(Panel.fit(
         "[bold red]RedSentinel CLI[/bold red]\n\n"
         "[cyan]Cybersecurity & Pentest Toolkit[/cyan]\n\n"
-        "Select an option to begin:",
+        "Sélectionnez une option pour commencer:",
         border_style="red"
     ))
     console.print()
@@ -1478,33 +1472,31 @@ def interactive_menu():
         console.print()
         # Menu panel
         menu_text = (
-            "[bold]Available Commands:[/bold]\n\n"
+            "[bold]Commandes disponibles:[/bold]\n\n"
             "  [cyan][1][/cyan] Subdomain Enumeration (crt.sh)\n"
             "  [cyan][2][/cyan] Quick Port Scan (TCP Connect)\n"
             "  [cyan][3][/cyan] Nmap Scan (Service Detection)\n"
             "  [cyan][4][/cyan] Web HTTP Checks\n"
-            "  [cyan][5][/cyan] Generate HTML Report\n"
-            "  [cyan][6][/cyan] Nuclei Vulnerability Scan\n"
-            "  [cyan][7][/cyan] Directory Brute Force (ffuf)\n"
-            "  [cyan][8][/cyan] SSL/TLS Analysis\n"
-            "  [cyan][9][/cyan] DNS Enumeration\n"
-            "  [cyan][10][/cyan] Nikto Web Vuln Scanner\n"
-            "  [cyan][11][/cyan] Automated Workflows\n"
-            "  [cyan][12][/cyan] CMS Detection & Scan\n"
-            "  [cyan][13][/cyan] Cloud Infrastructure Scan\n"
-            "  [cyan][14][/cyan] Threat Intelligence\n"
-            "  [cyan][15][/cyan] Data Correlation\n"
-            "  [cyan][16][/cyan] Masscan (Ultra-Fast Ports)\n"
-            "  [cyan][17][/cyan] Password Attack (Hydra/Medusa)\n"
-            "  [cyan][18][/cyan] Exploit Search (ExploitDB/MSF)\n"
-            "  [cyan][19][/cyan] AI-Powered Discovery\n"
-            "  [cyan][20][/cyan] Smart Recommendations\n"
-            "  [cyan][21][/cyan] Complete OSINT Gathering\n"
-            "  [cyan][22][/cyan] CVE Matching & Analysis\n"
-            "  [cyan][23][/cyan] API Security Testing\n"
-            "  [cyan][24][/cyan] Target Management\n"
-            "  [cyan][25][/cyan] Continuous Monitoring\n"
-            "  [cyan][26][/cyan] Professional Audit Report (PDF)\n"
+            "  [cyan][5][/cyan] Nuclei Vulnerability Scan\n"
+            "  [cyan][6][/cyan] Directory Brute Force (ffuf)\n"
+            "  [cyan][7][/cyan] SSL/TLS Analysis\n"
+            "  [cyan][8][/cyan] DNS Enumeration\n"
+            "  [cyan][9][/cyan] Nikto Web Vuln Scanner\n"
+            "  [cyan][10][/cyan] Automated Workflows\n"
+            "  [cyan][11][/cyan] CMS Detection & Scan\n"
+            "  [cyan][12][/cyan] Cloud Infrastructure Scan\n"
+            "  [cyan][13][/cyan] Threat Intelligence\n"
+            "  [cyan][14][/cyan] Data Correlation\n"
+            "  [cyan][15][/cyan] Masscan (Ultra-Fast Ports)\n"
+            "  [cyan][16][/cyan] Password Attack (Hydra/Medusa)\n"
+            "  [cyan][17][/cyan] Exploit Search (ExploitDB/MSF)\n"
+            "  [cyan][18][/cyan] AI-Powered Discovery\n"
+            "  [cyan][19][/cyan] Smart Recommendations\n"
+            "  [cyan][20][/cyan] Complete OSINT Gathering\n"
+            "  [cyan][21][/cyan] CVE Matching & Analysis\n"
+            "  [cyan][22][/cyan] API Security Testing\n"
+            "  [cyan][23][/cyan] Target Management\n"
+            "  [cyan][24][/cyan] Continuous Monitoring\n"
             "  [red][0][/red] Exit"
         )
         
@@ -1512,24 +1504,24 @@ def interactive_menu():
         console.print()
         
         try:
-            choice = Prompt.ask("redsentinel> ", choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26"])
+            choice = Prompt.ask("redsentinel> ")
         except KeyboardInterrupt:
             console.print()
             console.print()
-            info("Exiting...")
+            info("Arrêt en cours...")
             console.print()
             break
         
         if choice == "0":
             console.print()
-            info("Goodbye!")
+            info("Au revoir !")
             console.print()
             break
         
         try:
-            target = Prompt.ask("Target", default="example.com").strip()
+            target = Prompt.ask("Cible", default="example.com").strip()
             if not target or target == "":
-                error("Target is required")
+                error("La cible est requise")
                 continue
             
             if choice == "1":
@@ -1538,11 +1530,11 @@ def interactive_menu():
                 console.print()
             
             elif choice == "2":
-                ports_input = Prompt.ask("Ports (comma-separated)", default="80,443,22,8080")
+                ports_input = Prompt.ask("Ports (séparés par virgule)", default="80,443,22,8080")
                 ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
                 
                 console.print()
-                info("Fetching subdomains first...")
+                info("Récupération des sous-domaines...")
                 subs = loop.run_until_complete(do_recon(target))
                 hosts = [target] + subs[:20]
                 
@@ -1550,7 +1542,7 @@ def interactive_menu():
                 loop.run_until_complete(do_portscan(hosts, ports))
             
             elif choice == "3":
-                args_input = Prompt.ask("Nmap args (press Enter for defaults)", default="")
+                args_input = Prompt.ask("Arguments Nmap (appuyez sur Entrée pour les valeurs par défaut)", default="")
                 nmap_args = args_input if args_input else None
                 hosts = [target]
                 loop.run_until_complete(do_nmap_scan(hosts, nmap_args))
@@ -1559,42 +1551,9 @@ def interactive_menu():
                 loop.run_until_complete(do_webchecks([target]))
             
             elif choice == "5":
-                console.print()
-                info("Generating comprehensive report...")
-                console.print()
-                
-                # Progress for full report
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    console=console
-                ) as progress:
-                    progress.add_task("[cyan]Collecting data...", total=None)
-                    
-                    subs = loop.run_until_complete(do_recon(target))
-                    hosts = [target] + subs[:20]
-                    ports_res = loop.run_until_complete(do_portscan(hosts))
-                    
-                    progress.update(progress.task_ids[0], description="[cyan]Fetching web information...")
-                    http = loop.run_until_complete(do_webchecks(hosts))
-                    
-                    progress.update(progress.task_ids[0], description="[cyan]Generating report...")
-                    html = render_report(target, subs, ports_res.get(target, {}), http)
-                    
-                    fn = f"report_{target}.html"
-                    with open(fn, "w", encoding="utf-8") as f:
-                        f.write(html)
-                    
-                    progress.stop()
-                
-                console.print()
-                success(f"Report saved to: [cyan]{fn}[/cyan]")
-                info(f"Open it in your browser to view the full report")
-            
-            elif choice == "6":
                 # Nuclei Vulnerability Scan
                 console.print()
-                severity_choice = Prompt.ask("Severity filter (critical,high,medium,low,info) or all", default="all")
+                severity_choice = Prompt.ask("Filtre de sévérité (critical,high,medium,low,info) ou all", default="all")
                 if severity_choice.lower() != "all":
                     severity = severity_choice
                 else:
@@ -1602,214 +1561,127 @@ def interactive_menu():
                 
                 loop.run_until_complete(do_nuclei_scan([target], severity=severity))
             
-            elif choice == "7":
+            elif choice == "6":
                 # Directory Brute Force (ffuf)
-                url = Prompt.ask("Target URL", default=f"https://{target}")
+                url = Prompt.ask("URL cible", default=f"https://{target}")
                 if not url.startswith(("http://", "https://")):
                     url = f"https://{url}"
                 loop.run_until_complete(do_ffuf_scan(url))
             
-            elif choice == "8":
+            elif choice == "7":
                 # SSL/TLS Analysis
                 port_input = Prompt.ask("Port", default="443")
                 port = int(port_input) if port_input.isdigit() else 443
                 loop.run_until_complete(do_ssl_analysis(target, port))
             
-            elif choice == "9":
+            elif choice == "8":
                 # DNS Enumeration
                 loop.run_until_complete(do_dns_enum(target))
             
-            elif choice == "10":
+            elif choice == "9":
                 # Nikto Web Vulnerability Scanner
-                url = Prompt.ask("Target URL", default=f"https://{target}")
+                url = Prompt.ask("URL cible", default=f"https://{target}")
                 if not url.startswith(("http://", "https://")):
                     url = f"https://{url}"
                 loop.run_until_complete(do_nikto_scan(url))
             
-            elif choice == "11":
+            elif choice == "10":
                 # Automated Workflows
                 console.print()
                 workflows = get_available_workflows()
-                info(f"Available workflows: {', '.join(workflows)}")
+                info(f"Workflows disponibles : {', '.join(workflows)}")
                 console.print()
                 
                 workflow_choice = Prompt.ask(
-                    "Select workflow (quick/standard/deep/vulnerability)",
+                    "Sélectionnez un workflow (quick/standard/deep/vulnerability)",
                     default="quick"
                 )
                 
                 if workflow_choice in workflows:
                     loop.run_until_complete(do_workflow(workflow_choice, target))
                 else:
-                    error(f"Unknown workflow: {workflow_choice}")
+                    error(f"Workflow inconnu : {workflow_choice}")
             
-            elif choice == "12":
+            elif choice == "11":
                 # CMS Detection & Scan
-                url = Prompt.ask("Target URL", default=f"https://{target}")
+                url = Prompt.ask("URL cible", default=f"https://{target}")
                 if not url.startswith(("http://", "https://")):
                     url = f"https://{url}"
                 loop.run_until_complete(do_cms_scan(url))
             
-            elif choice == "13":
+            elif choice == "12":
                 # Cloud Infrastructure Scan
                 loop.run_until_complete(do_cloud_scan(target))
             
-            elif choice == "14":
+            elif choice == "13":
                 # Threat Intelligence
                 loop.run_until_complete(do_threat_intel(target))
             
-            elif choice == "15":
+            elif choice == "14":
                 # Data Correlation
                 loop.run_until_complete(do_data_correlation(target))
             
-            elif choice == "16":
+            elif choice == "15":
                 # Masscan Ultra-Fast Port Scan
-                ports_input = Prompt.ask("Ports to scan (e.g., 1-1000)", default="1-65535")
+                ports_input = Prompt.ask("Ports à scanner (ex: 1-1000)", default="1-65535")
                 loop.run_until_complete(do_masscan(target, ports=ports_input))
             
-            elif choice == "17":
+            elif choice == "16":
                 # Password Attack
                 console.print()
-                warning("⚠️ AUTHORIZED USE ONLY - ILLEGAL WITHOUT PERMISSION!")
+                warning("⚠️ UTILISATION AUTORISÉE UNIQUEMENT - ILLÉGAL SANS PERMISSION !")
                 console.print()
-                protocol = Prompt.ask("Protocol (ssh/ftp/http/smb)", default="ssh")
+                protocol = Prompt.ask("Protocole (ssh/ftp/http/smb)", default="ssh")
                 loop.run_until_complete(do_password_attack(target, protocol))
             
-            elif choice == "18":
+            elif choice == "17":
                 # Exploit Search
                 console.print()
-                service = Prompt.ask("Service name (e.g., apache, mysql)", default="apache")
-                version = Prompt.ask("Version (optional)", default="")
+                service = Prompt.ask("Nom du service (ex: apache, mysql)", default="apache")
+                version = Prompt.ask("Version (optionnel)", default="")
                 version = version if version else None
                 loop.run_until_complete(do_exploit_search(service, version))
             
-            elif choice == "19":
+            elif choice == "18":
                 # AI-Powered Discovery
                 loop.run_until_complete(do_ai_discovery(target))
             
-            elif choice == "20":
+            elif choice == "19":
                 # Smart Recommendations
                 loop.run_until_complete(do_smart_recommendations(target))
             
-            elif choice == "21":
+            elif choice == "20":
                 # Complete OSINT Gathering
                 loop.run_until_complete(do_osint_comprehensive(target))
             
-            elif choice == "22":
+            elif choice == "21":
                 # CVE Matching & Analysis
                 loop.run_until_complete(do_cve_matching("example"))
             
-            elif choice == "23":
+            elif choice == "22":
                 # API Security Testing
-                url = Prompt.ask("API URL", default=f"https://{target}/api")
+                url = Prompt.ask("URL de l'API", default=f"https://{target}/api")
                 loop.run_until_complete(do_api_security_scan(url))
             
-            elif choice == "24":
+            elif choice == "23":
                 # Target Management
                 loop.run_until_complete(do_target_management())
             
-            elif choice == "25":
+            elif choice == "24":
                 # Continuous Monitoring
                 loop.run_until_complete(do_continuous_monitoring(target))
             
-            elif choice == "26":
-                # Professional Audit Report
-                console.print()
-                info("Génération du rapport d'audit professionnel...")
-                console.print()
-                
-                # Collecter les informations client
-                client_name = Prompt.ask("Nom du client", default="Example Corp")
-                contract_ref = Prompt.ask("Référence contrat", default="REF-2024-001")
-                
-                # Collecter toutes les données
-                console.print()
-                info("Collecte des données de sécurité...")
-                
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    console=console
-                ) as progress:
-                    progress.add_task("[cyan]Rassemblement des résultats...", total=None)
-                    
-                    # Simuler la collecte de données
-                    audit_data = {
-                        "client_name": client_name,
-                        "contract_ref": contract_ref,
-                        "audit_type": "Pentest de Sécurité",
-                        "period_start": "01/01/2024",
-                        "period_end": "15/01/2024",
-                        "report_date": now_iso(),
-                        "vulnerabilities": [
-                            {
-                                "name": "SQL Injection",
-                                "severity": "CRITICAL",
-                                "cvss_score": 9.8,
-                                "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
-                                "location": "POST /api/users?id=...",
-                                "parameter": "id",
-                                "http_method": "POST",
-                                "description": "L'application est vulnérable aux injections SQL dans le paramètre 'id'",
-                                "impact": "Extraction complète de la base de données, compromission de tous les comptes",
-                                "remediation": "Implémenter des requêtes préparées (Prepared Statements)",
-                                "cwe": "CWE-89",
-                                "status": "Non corrigé"
-                            },
-                            {
-                                "name": "Weak SSL/TLS Configuration",
-                                "severity": "HIGH",
-                                "cvss_score": 7.5,
-                                "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
-                                "location": "HTTPS://app.example.com",
-                                "description": "Le serveur utilise des protocoles SSL/TLS obsolètes (SSLv3) et des suites de chiffrement faibles",
-                                "impact": "Risque de déchiffrement de données en transit",
-                                "remediation": "Désactiver SSLv3, utiliser TLS 1.2 minimum et configurer des ciphers sécurisés",
-                                "cwe": "CWE-295",
-                                "status": "Non corrigé"
-                            },
-                            {
-                                "name": "Missing Security Headers",
-                                "severity": "MEDIUM",
-                                "cvss_score": 5.3,
-                                "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
-                                "location": "Toutes les pages",
-                                "description": "Absence d'en-têtes de sécurité essentiels (CSP, X-Frame-Options, etc.)",
-                                "impact": "Vulnérabilité accrue aux attaques XSS et clickjacking",
-                                "remediation": "Implémenter les en-têtes de sécurité recommandés par OWASP",
-                                "cwe": "CWE-693",
-                                "status": "Non corrigé"
-                            }
-                        ],
-                        "compliance_standards": ["RGPD", "PCI-DSS"],
-                        "timeline_config": {
-                            "immediate": 7,
-                            "short_term": 30,
-                            "medium_term": 90,
-                            "long_term": 180
-                        }
-                    }
-                    
-                    # Générer le rapport
-                    report_path = generate_audit_pdf(audit_data)
-                    
-                    progress.stop()
-                
-                console.print()
-                success(f"Rapport d'audit généré : [cyan]{report_path}[/cyan]")
-                info("Ouvrez le fichier dans votre navigateur pour voir le rapport complet")
-                console.print()
             
             else:
-                error("Invalid choice")
+                error("Choix invalide")
         
         except KeyboardInterrupt:
             console.print()
-            warning("Operation cancelled by user")
+            warning("Opération annulée par l'utilisateur")
         
         except Exception as e:
             console.print()
-            error(f"Error: {str(e)}")
+            error(f"Erreur : {str(e)}")
             import traceback
             console.print(f"[dim]{traceback.format_exc()}[/dim]")
 
