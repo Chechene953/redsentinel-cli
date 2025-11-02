@@ -50,16 +50,14 @@ class PatternRecognizer:
         }
         
         # Check for common patterns
-        for pattern_name, patterns in self.patterns["common_subdomain_patterns"].items():
+        for pattern_idx, pattern in enumerate(self.patterns["common_subdomain_patterns"]):
             matches = []
             for sub in subdomains:
-                for pattern in patterns:
-                    if re.search(pattern, sub):
-                        matches.append(sub)
-                        break
+                if re.search(pattern, sub):
+                    matches.append(sub)
             
             if matches:
-                analysis["patterns_detected"][pattern_name] = matches
+                analysis["patterns_detected"][f"pattern_{pattern_idx}"] = matches
         
         # Generate recommendations
         if analysis["patterns_detected"].get("common_subdomain_patterns"):
@@ -203,6 +201,9 @@ class SmartRecommendation:
         medium_priority_keywords = ["brute force", "check", "scan"]
         
         for rec in recommendations:
+            # Make sure rec is a string
+            if not isinstance(rec, str):
+                continue
             rec_lower = rec.lower()
             if any(keyword in rec_lower for keyword in high_priority_keywords):
                 priority["high"].append(rec)
@@ -256,10 +257,15 @@ class AnomalyDetector:
         }
         
         for service in services:
-            name = service.get("name", "").lower()
-            version = service.get("version", "")
+            # Handle both dict and other types
+            if isinstance(service, dict):
+                name = (service.get("name") or "").lower()
+                version = (service.get("version") or "")
+            else:
+                name = ""
+                version = ""
             
-            if name in known_vulnerable_versions:
+            if name and name in known_vulnerable_versions:
                 for vulnerable_version in known_vulnerable_versions[name]:
                     if vulnerable_version in version:
                         anomalies["version_mismatch"].append({

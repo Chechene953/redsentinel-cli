@@ -168,13 +168,14 @@ def print_banner(banner_type: str = "main", show_logo: bool = False):
     
     # Si on affiche le logo et c'est le main banner
     if banner_type == "main" and show_logo:
-        # Afficher le logo au-dessus, centré
-        logo_top = design.banners.get("logo_top", "")
-        if logo_top:
-            logo_lines = logo_top.replace("\\n", "\n").split('\n')
+        # Afficher le logo au-dessus (pas centré pour logo_tƒop, centré pour logo ascii compact)
+        logo_ascii = design.logos.get("ascii", "")
+        if logo_ascii:
+            # Logo compact ASCII - afficher sans centrage
+            logo_lines = logo_ascii.replace("\\n", "\n").split('\n')
             for line in logo_lines:
                 if line.strip():  # Ignorer les lignes vides
-                    console.print(Align.center(line), style="bold red")
+                    console.print(line, style="bold red")
             console.print()
     
     # Créer le banner complet

@@ -1452,7 +1452,7 @@ Generates alerts on significant changes.
 
 def interactive_menu():
     """Menu interactif principal"""
-    print_banner(show_logo=True)  # Afficher le logo ASCII au-dessus du titre
+    print_banner(show_logo=True)  # Logo + Banner ASCII
     
     # Vérifier les mises à jour disponibles (au démarrage)
     try:
