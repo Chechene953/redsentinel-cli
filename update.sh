@@ -3,7 +3,13 @@
 
 set -euo pipefail
 
+# Couleurs ANSI
+RED='\033[31m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
 # Banner RedSentinel ASCII
+printf "${RED}${BOLD}"
 cat << 'EOF'
 
                                                                ,╦@Ñ╦,
@@ -45,6 +51,7 @@ cat << 'EOF'
                     Mise à jour
 ========================================
 EOF
+printf "${RESET}"
 echo ""
 
 # Vérifier qu'on est dans le bon répertoire
