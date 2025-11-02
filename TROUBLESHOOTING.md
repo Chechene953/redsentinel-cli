@@ -204,3 +204,5 @@ Ne mélangez **jamais** plusieurs méthodes d'installation.
 ---
 
 Pour toute question ou assistance, contactez Alexandre Tavares / Redsentinel.
+
+Site web : https://redsentinel.fr

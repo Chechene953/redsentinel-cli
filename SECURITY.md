@@ -69,3 +69,5 @@ RedSentinel utilise uniquement des outils existants (nmap, nuclei, etc.) et n'in
 ---
 
 **Utilisation Responsable. Usage Professionnel Uniquement.**
+
+Site web : https://redsentinel.fr
