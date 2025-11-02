@@ -142,4 +142,3 @@ RedSentinel est destiné à un usage professionnel exclusivement. Toute utilisat
 
 Contact : Alexandre Tavares / Redsentinel
 
-<a href="https://redsentinel.fr"></a>
