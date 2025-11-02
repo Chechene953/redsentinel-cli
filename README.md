@@ -14,7 +14,7 @@ RedSentinel est une suite complète d'outils d'automatisation pour les tâches d
 
 ### Clause de non-responsabilité
 
-RedSentinel est fourni "tel quel" et est destiné exclusivement à des fins professionnelles légales. Alexandre Tavares et Redsentinel ne peuvent être tenus responsables de :
+RedSentinel-CLI est fourni "tel quel" et est destiné exclusivement à des fins professionnelles légales. Alexandre Tavares et Redsentinel ne peuvent être tenus responsables de :
 
 - Toute utilisation non autorisée de cet outil
 - Toute activité illégale ou malveillante effectuée avec cet outil
