@@ -132,16 +132,19 @@ def format_nmap_results(results):
 
 
 async def do_recon(target):
-    """Fonction de reconnaissance subdomain"""
+    """Advanced subdomain enumeration"""
+    from redsentinel.tools.recon_advanced import advanced_subdomain_enum
+    
     panel = Panel.fit(
-        f"[bold]REDSENTINEL > SUBDOMAIN ENUMERATION[/bold]\n\n"
-        f"Target: [yellow]{target}[/yellow]",
+        f"[bold]REDSENTINEL > ADVANCED SUBDOMAIN ENUMERATION[/bold]\n\n"
+        f"Target: [yellow]{target}[/yellow]\n"
+        f"Sources: crt.sh, Certspotter, URLScan",
         border_style="red"
     )
     console.print(panel)
     console.print()
     
-    info(f"Starting enumeration for [yellow]{target}[/yellow]...")
+    info(f"Starting multi-source enumeration for [yellow]{target}[/yellow]...")
     
     # Progress bar
     with Progress(
@@ -149,38 +152,62 @@ async def do_recon(target):
         TextColumn("[progress.description]{task.description}"),
         console=console
     ) as progress:
-        task = progress.add_task("[cyan]Querying certificate transparency logs...", total=None)
-        subs = await crtsh_subdomains(target)
+        task = progress.add_task("[cyan]Querying multiple certificate transparency sources...", total=None)
+        results = await advanced_subdomain_enum(target, use_wordlist=False)
         progress.stop()
     
     console.print()
-    success(f"Found {len(subs)} subdomains")
-    console.print()
     
-    # Display first 50 subdomains
-    if subs:
-        table_config = get_table_config()
+    # Display summary
+    if results.get("subdomains"):
+        success(f"Found {results['total_found']} unique subdomains from multiple sources")
+        console.print()
+        
+        # Source breakdown
+        if results.get("sources"):
+            table_config = get_table_config()
+            source_table = Table(show_header=True, header_style=table_config["header_style"],
+                               border_style=table_config["border_style"],
+                               title="[bold]Enumeration Sources[/bold]")
+            source_table.add_column("Source", style="cyan")
+            source_table.add_column("Count", style="green")
+            
+            for source, count in results["sources"].items():
+                source_table.add_row(source, str(count))
+            
+            console.print(source_table)
+            console.print()
+        
+        # Display subdomains
         table = Table(show_header=False, border_style=table_config["border_style"], 
                      box=None, padding=(0, 2))
         table.add_column("Subdomain", style="cyan")
         
-        for sub in subs[:50]:
+        for sub in results["subdomains"][:50]:
             table.add_row(f"  • {sub}")
         
         console.print(table)
+        
+        if len(results["subdomains"]) > 50:
+            warning(f"Showing first 50 of {len(results['subdomains'])} results")
     else:
         warning("No subdomains found")
     
-    return subs
+    return results.get("subdomains", [])
 
 
 async def do_portscan(targets, ports=None):
-    """Fonction de scan de ports"""
-    ports = ports or [80, 443, 22, 21, 3306, 6379, 8080, 8443]
+    """Professional port scanning with service detection"""
+    from redsentinel.tools.recon_advanced import comprehensive_port_scan
+    
+    # Default to professional top ports if not specified
+    ports = ports or [21, 22, 23, 25, 53, 80, 88, 110, 111, 135, 139, 143, 443, 445, 993, 995, 
+                      1433, 1723, 3306, 3389, 5432, 5900, 5985, 5986, 8000, 8080, 8443, 9200]
+    
     results = {}
     
     console.print()
-    info(f"Scanning [yellow]{len(targets)}[/yellow] host(s) on [yellow]{len(ports)}[/yellow] port(s)")
+    info(f"Professional port scanning on [yellow]{len(targets)}[/yellow] host(s)")
     console.print()
     
     # Progress bar
@@ -189,34 +216,49 @@ async def do_portscan(targets, ports=None):
         TextColumn("[progress.description]{task.description}"),
         console=console
     ) as progress:
-        task = progress.add_task("[cyan]Scanning ports...", total=len(targets))
+        task = progress.add_task("[cyan]Scanning with service & banner detection...", total=len(targets))
         
         for h in targets:
-            r = await scan_ports(h, ports)
+            r = await comprehensive_port_scan(h, ports=ports, timeout=3.0, concurrency=100)
             results[h] = r
             progress.advance(task)
     
     console.print()
     
-    # Results table
+    # Results table with details
     table_config = get_table_config()
-    table = Table(show_header=True, header_style=table_config["header_style"], 
-                  border_style=table_config["border_style"])
-    table.add_column("Host", style="cyan", width=30)
-    table.add_column("Open Ports", style="green", width=40)
-    
     for h in targets:
-        open_ports = [str(p) for p, o in results[h].items() if o]
+        scan_result = results.get(h, {})
+        table = Table(show_header=True, header_style=table_config["header_style"], 
+                      border_style=table_config["border_style"],
+                      title=f"[bold]Host: {h}[/bold]")
+        table.add_column("Port", style="cyan", width=8)
+        table.add_column("Service", style="yellow", width=20)
+        table.add_column("Banner", style="white", width=40)
+        
+        open_ports = scan_result.get("open_ports", [])
+        services = scan_result.get("services", {})
+        banners = scan_result.get("banners", {})
+        
         if open_ports:
-            table.add_row(h, ", ".join(open_ports))
+            for port in open_ports:
+                service = services.get(port, "Unknown")
+                banner = banners.get(port, "")
+                banner_short = banner[:35] + "..." if len(banner) > 35 else banner
+                table.add_row(str(port), service, banner_short)
         else:
-            table.add_row(h, "[dim]None[/dim]")
+            table.add_row("[dim]None[/dim]", "[dim]No open ports[/dim]", "[dim]-[/dim]")
+        
+        console.print(table)
+        console.print()
+        
+        # Summary
+        if scan_result.get("scan_time"):
+            info(f"Scanned {scan_result.get('total_scanned', 0)} ports in {scan_result['scan_time']}")
+            console.print()
     
-    console.print(table)
-    
-    total_open = sum(1 for r in results.values() for p, o in r.items() if o)
-    console.print()
-    success(f"Scan completed: {total_open} open port(s) found")
+    total_open = sum(len(r.get("open_ports", [])) for r in results.values())
+    success(f"Total: {total_open} open port(s) found across all targets")
     
     return results
 
@@ -488,9 +530,11 @@ async def do_ffuf_scan(target_url, wordlist=None, extensions=None):
 
 
 async def do_dns_enum(domain):
-    """Fonction d'enumération DNS complète"""
+    """Deep DNS analysis for professional reconnaissance"""
+    from redsentinel.tools.recon_advanced import deep_dns_analysis
+    
     console.print()
-    info(f"Starting comprehensive DNS enumeration for [yellow]{domain}[/yellow]")
+    info(f"Starting professional DNS analysis for [yellow]{domain}[/yellow]")
     console.print()
     
     with Progress(
@@ -498,57 +542,59 @@ async def do_dns_enum(domain):
         TextColumn("[progress.description]{task.description}"),
         console=console
     ) as progress:
-        task = progress.add_task("[cyan]Enumerating DNS records...", total=None)
-        results = await comprehensive_dns_enum(domain, tools=["dig", "host"])
+        task = progress.add_task("[cyan]Deep DNS analysis and security checks...", total=None)
+        results = await deep_dns_analysis(domain)
         progress.stop()
     
     console.print()
     
-    # Afficher les résultats
     table_config = get_table_config()
     
-    # Table pour DIG
-    if "dig" in results and results["dig"]:
+    # DNS Records
+    if results.get("records"):
         table = Table(show_header=True, header_style=table_config["header_style"],
                      border_style=table_config["border_style"],
-                     title="[bold]DNS Records (dig)[/bold]")
-        table.add_column("Type", style="cyan", width=10)
-        table.add_column("Records", style="yellow")
+                     title="[bold]DNS Records[/bold]")
+        table.add_column("Type", style="cyan", width=15)
+        table.add_column("Description", style="dim", width=25)
+        table.add_column("Values", style="yellow")
         
-        for rtype, records in results["dig"].items():
-            if records:
-                table.add_row(rtype, "\n".join(records))
+        for rtype, data in results["records"].items():
+            if "values" in data and data["values"]:
+                description = data.get("description", "N/A")
+                values_str = ", ".join(data["values"][:5])
+                if len(data["values"]) > 5:
+                    values_str += f" ... (+{len(data['values'])-5} more)"
+                table.add_row(rtype, description, values_str)
         
         console.print(table)
         console.print()
     
-    # Table pour HOST
-    if "host" in results and results["host"]:
-        table = Table(show_header=True, header_style=table_config["header_style"],
-                     border_style=table_config["border_style"],
-                     title="[bold]DNS Records (host)[/bold]")
-        table.add_column("Type", style="cyan", width=10)
-        table.add_column("Records", style="yellow")
+    # Security Checks
+    if results.get("security_checks"):
+        security_table = Table(show_header=True, header_style="bold yellow",
+                             border_style=table_config["border_style"],
+                             title="[bold]Security Findings[/bold]")
+        security_table.add_column("Check", style="cyan")
+        security_table.add_column("Status", style="green")
         
-        for rtype, record in results["host"].items():
-            if record:
-                table.add_row(rtype, record)
+        for check, status in results["security_checks"].items():
+            security_table.add_row(check, status)
         
-        console.print(table)
+        console.print(security_table)
         console.print()
     
-    if results:
-        success("DNS enumeration completed")
-    else:
-        warning("No DNS records found or tools not available")
+    success("DNS analysis completed")
     
     return results
 
 
 async def do_ssl_analysis(host, port=443):
-    """Fonction d'analyse SSL/TLS"""
+    """Professional SSL/TLS security audit"""
+    from redsentinel.tools.recon_advanced import professional_ssl_audit
+    
     console.print()
-    info(f"Starting SSL/TLS analysis for [yellow]{host}:{port}[/yellow]")
+    info(f"Starting professional SSL/TLS audit for [yellow]{host}:{port}[/yellow]")
     console.print()
     
     with Progress(
@@ -556,45 +602,91 @@ async def do_ssl_analysis(host, port=443):
         TextColumn("[progress.description]{task.description}"),
         console=console
     ) as progress:
-        task = progress.add_task("[cyan]Analyzing SSL/TLS configuration...", total=None)
-        results = await comprehensive_ssl_analysis(host, port)
+        task = progress.add_task("[cyan]Performing comprehensive SSL/TLS analysis...", total=None)
+        results = await professional_ssl_audit(host, port)
         progress.stop()
     
     console.print()
     
-    # Afficher les résultats TLS basiques
-    if results.get("tls_basic") and results["tls_basic"].get("supported"):
-        tls = results["tls_basic"]
-        
+    if not results.get("error"):
         table_config = get_table_config()
-        table = Table(show_header=True, header_style=table_config["header_style"],
-                     border_style=table_config["border_style"],
-                     title="[bold green]SSL/TLS Certificate Information[/bold green]")
-        table.add_column("Property", style="cyan", width=20)
-        table.add_column("Value", style="yellow")
         
-        cert = tls.get("certificate", {})
-        subject = cert.get("subject", {})
-        issuer = cert.get("issuer", {})
-        
-        table.add_row("Subject", ", ".join([f"{k}={v}" for k, v in subject.items()]))
-        table.add_row("Issuer", ", ".join([f"{k}={v}" for k, v in issuer.items()]))
-        table.add_row("Valid From", cert.get("notBefore", "-"))
-        table.add_row("Valid To", cert.get("notAfter", "-"))
-        
-        if tls.get("protocols"):
-            table.add_row("TLS Protocol", ", ".join(tls["protocols"]))
-        
-        if tls.get("ciphers"):
-            cipher = tls["ciphers"][0]
-            table.add_row("Cipher", f"{cipher.get('name')} ({cipher.get('bits')} bits)")
-        
-        console.print(table)
+        # Overall grade
+        grade = results.get("grade", "N/A")
+        grade_color = "green" if grade == "A" else "yellow" if grade == "B" else "red"
+        console.print(Panel.fit(
+            f"[bold]Overall SSL/TLS Grade: [/bold][bold {grade_color}]{grade}[/bold {grade_color}]",
+            border_style=table_config["border_style"]
+        ))
         console.print()
-        success("SSL/TLS analysis completed")
+        
+        # Certificate details
+        if results.get("certificate"):
+            cert = results["certificate"]
+            table = Table(show_header=True, header_style=table_config["header_style"],
+                         border_style=table_config["border_style"],
+                         title="[bold]Certificate Details[/bold]")
+            table.add_column("Property", style="cyan", width=20)
+            table.add_column("Value", style="yellow")
+            
+            if cert.get("subject"):
+                subject_str = ", ".join([f"{k}={v}" for k, v in cert["subject"].items()])
+                table.add_row("Subject", subject_str)
+            
+            if cert.get("issuer"):
+                issuer_str = ", ".join([f"{k}={v}" for k, v in cert["issuer"].items()])
+                table.add_row("Issuer", issuer_str)
+            
+            if cert.get("notAfter"):
+                table.add_row("Valid Until", cert["notAfter"])
+            
+            console.print(table)
+            console.print()
+        
+        # Protocols
+        if results.get("protocols"):
+            proto_table = Table(show_header=True, header_style=table_config["header_style"],
+                               border_style=table_config["border_style"],
+                               title="[bold]TLS Protocols[/bold]")
+            proto_table.add_column("Property", style="cyan")
+            proto_table.add_column("Value", style="yellow")
+            
+            for proto, value in results["protocols"].items():
+                proto_table.add_row(proto, str(value))
+            
+            console.print(proto_table)
+            console.print()
+        
+        # Vulnerabilities
+        if results.get("vulnerabilities"):
+            vuln_table = Table(show_header=True, header_style="bold red",
+                              border_style=table_config["border_style"],
+                              title="[bold red]Security Issues[/bold red]")
+            vuln_table.add_column("Vulnerability", style="yellow")
+            
+            for vuln in results["vulnerabilities"]:
+                vuln_table.add_row(vuln)
+            
+            console.print(vuln_table)
+            console.print()
+        
+        # Recommendations
+        if results.get("recommendations"):
+            rec_table = Table(show_header=True, header_style="bold green",
+                             border_style=table_config["border_style"],
+                             title="[bold green]Recommendations[/bold green]")
+            rec_table.add_column("Recommendation", style="cyan")
+            
+            for rec in results["recommendations"]:
+                rec_table.add_row(rec)
+            
+            console.print(rec_table)
+            console.print()
+        
+        success("SSL/TLS audit completed")
     else:
-        error = results.get("tls_basic", {}).get("error", "Unknown error")
-        error(f"SSL/TLS analysis failed: {error}")
+        error_msg = results.get("error", "Unknown error")
+        error(f"SSL/TLS audit failed: {error_msg}")
     
     return results
 
@@ -1484,9 +1576,10 @@ def interactive_menu():
             "[bold]REDSENTINEL v6.0 ULTRA[/bold]\n\n"
             "═══════════════════════════════════════════════════════════\n\n"
             "[bold cyan][1] RECONNAISSANCE & ENUMERATION[/bold cyan]\n"
-            "   1.1 Subdomain Discovery (crt.sh)\n"
+            "   1.0 FULL PROFESSIONAL RECON PIPELINE (ALL-IN-ONE)\n"
+            "   1.1 Subdomain Discovery (Advanced Multi-Source)\n"
             "   1.2 DNS Enumeration Complete\n"
-            "   1.3 Quick Port Scan (TCP)\n"
+            "   1.3 Quick Port Scan (TCP) + Service Detection\n"
             "   1.4 Nmap Scan (Service Detection)\n"
             "   1.5 Masscan (Ultra-Fast)\n"
             "   1.6 SSL/TLS Analysis\n"
@@ -1538,7 +1631,16 @@ def interactive_menu():
         # Routage hiérarchique par catégories
         try:
             # Catégorie 1: RECONNAISSANCE & ÉNUMÉRATION
-            if choice == "1.1":
+            if choice == "1.0":
+                from redsentinel.tools.recon_pro import full_recon_pipeline
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(full_recon_pipeline(target))
+            
+            elif choice == "1.1":
                 target = Prompt.ask("Cible", default="example.com").strip()
                 if not target:
                     error("La cible est requise")

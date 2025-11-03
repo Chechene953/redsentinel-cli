@@ -107,6 +107,21 @@ class ReconTab:
         )
         self.cloud_btn.pack(side="left", padx=5)
         
+        # Troisième ligne - PROFESSIONAL RECON
+        buttons_frame3 = ctk.CTkFrame(self.parent)
+        buttons_frame3.pack(fill="x", padx=20, pady=(0, 20))
+        
+        self.full_recon_btn = ctk.CTkButton(
+            buttons_frame3,
+            text="Full Professional Recon Pipeline",
+            command=self.run_full_recon,
+            width=600,
+            height=45,
+            fg_color="#E11D47",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        self.full_recon_btn.pack(padx=5)
+        
         # Progress bar
         self.progress_bar = ctk.CTkProgressBar(self.parent)
         self.progress_bar.set(0)
@@ -225,59 +240,112 @@ class ReconTab:
             loop.close()
     
     async def _subdomain_scan(self, target: str):
-        """Scan asynchrone de sous-domaines"""
+        """Advanced subdomain enumeration"""
         try:
-            from redsentinel.recon import crtsh_subdomains
+            from redsentinel.tools.recon_advanced import advanced_subdomain_enum
             
-            subs = await crtsh_subdomains(target)
+            self.log(f"[*] Starting advanced subdomain enumeration...")
+            self.log(f"[*] Using multiple sources: crt.sh, Certspotter, URLScan")
+            
+            results = await advanced_subdomain_enum(target, use_wordlist=False)
             self.progress_bar.set(1.0)
             
-            if subs:
-                self.log(f"[+] Found {len(subs)} subdomains:")
-                for sub in subs:
+            if results.get("subdomains"):
+                self.log(f"[+] Found {results['total_found']} unique subdomains")
+                self.log("\n[*] Breakdown by source:")
+                for source, count in results.get("sources", {}).items():
+                    self.log(f"  • {source}: {count}")
+                
+                self.log("\n[+] Subdomains:")
+                for sub in results["subdomains"][:100]:  # Limit display
                     self.log(f"  • {sub}")
+                
+                if len(results["subdomains"]) > 100:
+                    self.log(f"\n[!] Showing first 100 of {len(results['subdomains'])} results")
             else:
                 self.log("[!] No subdomains found")
                 
         except Exception as e:
             self.log(f"ERROR: {str(e)}")
+            import traceback
+            self.log(traceback.format_exc())
         finally:
             self.subdomain_btn.configure(state="normal")
     
     async def _dns_scan(self, target: str):
-        """Scan asynchrone DNS"""
+        """Deep DNS analysis"""
         try:
-            from redsentinel.tools.dns_tools import comprehensive_dns_enum
+            from redsentinel.tools.recon_advanced import deep_dns_analysis
             
-            results = await comprehensive_dns_enum(target)
+            self.log(f"[*] Starting comprehensive DNS analysis...")
+            
+            results = await deep_dns_analysis(target)
             self.progress_bar.set(1.0)
             
-            self.log("[+] DNS Enumeration complete:")
-            self.log(str(results))
+            self.log("[+] DNS Analysis complete:\n")
+            
+            # Display records
+            for rtype, data in results.get("records", {}).items():
+                if "values" in data:
+                    self.log(f"[*] {rtype} Records ({data.get('description', 'N/A')}):")
+                    for value in data["values"][:10]:
+                        self.log(f"  • {value}")
+                    if len(data["values"]) > 10:
+                        self.log(f"  ... and {len(data['values']) - 10} more")
+                    self.log("")
+            
+            # Security checks
+            if results.get("security_checks"):
+                self.log("[*] Security Findings:")
+                for check, status in results["security_checks"].items():
+                    self.log(f"  • {check}: {status}")
+                self.log("")
                 
         except Exception as e:
             self.log(f"ERROR: {str(e)}")
+            import traceback
+            self.log(traceback.format_exc())
         finally:
             self.dns_btn.configure(state="normal")
     
     async def _portscan(self, target: str):
-        """Scan asynchrone de ports"""
+        """Professional port scanning with service detection"""
         try:
-            from redsentinel.scanner import scan_ports
+            from redsentinel.tools.recon_advanced import comprehensive_port_scan
             
-            ports = [80, 443, 22, 21, 8080, 3306, 5432]
-            results = await scan_ports([target], ports)
+            self.log(f"[*] Starting professional port scan...")
+            self.log(f"[*] Target: {target}")
+            self.log(f"[*] Scanning top ports with banner grabbing...")
+            
+            # Top ports for pentesters
+            ports = [21, 22, 23, 25, 53, 80, 88, 110, 111, 135, 139, 143, 443, 445, 993, 995, 
+                    1433, 1723, 3306, 3389, 5432, 5900, 5985, 5986, 8000, 8080, 8443, 9200]
+            
+            results = await comprehensive_port_scan(target, ports=ports, timeout=3.0, concurrency=100)
             self.progress_bar.set(1.0)
             
-            self.log("[+] Port scan complete:")
-            if isinstance(results, list):
-                for result in results:
-                    self.log(f"  • {result}")
+            self.log(f"\n[+] Port Scan Summary:")
+            self.log(f"  • Scanned: {results['total_scanned']} ports")
+            self.log(f"  • Open: {len(results['open_ports'])} ports")
+            self.log(f"  • Scan time: {results.get('scan_time', 'N/A')}")
+            
+            if results.get("open_ports"):
+                self.log(f"\n[+] Open Ports & Services:")
+                for port in results["open_ports"]:
+                    service = results.get("services", {}).get(port, "Unknown")
+                    self.log(f"  • Port {port}: {service}")
+                    
+                    banner = results.get("banners", {}).get(port)
+                    if banner:
+                        banner_short = banner[:80] + "..." if len(banner) > 80 else banner
+                        self.log(f"    Banner: {banner_short}")
             else:
-                self.log(str(results))
+                self.log("\n[!] No open ports found")
                 
         except Exception as e:
             self.log(f"ERROR: {str(e)}")
+            import traceback
+            self.log(traceback.format_exc())
         finally:
             self.portscan_btn.configure(state="normal")
     
@@ -321,6 +389,20 @@ class ReconTab:
         self.log(f"[*] Starting Cloud discovery for {target}...")
         threading.Thread(target=self._async_wrapper, args=(self._cloud_scan, target)).start()
     
+    def run_full_recon(self):
+        """Lance le pipeline de reconnaissance professionnel complet"""
+        target = self.get_target()
+        if not target:
+            return
+        self.full_recon_btn.configure(state="disabled")
+        self.progress_bar.set(0)
+        self.log("=" * 80)
+        self.log("REDSENTINEL PROFESSIONAL RECONNAISSANCE PIPELINE")
+        self.log("=" * 80)
+        self.log(f"Target: {target}")
+        self.log("=" * 80 + "\n")
+        threading.Thread(target=self._async_wrapper, args=(self._full_recon_pipeline, target)).start()
+    
     async def _nmap_scan(self, target: str):
         """Scan Nmap asynchrone"""
         try:
@@ -348,15 +430,53 @@ class ReconTab:
             self.masscan_btn.configure(state="normal")
     
     async def _ssl_scan(self, target: str):
-        """Analyse SSL/TLS asynchrone"""
+        """Professional SSL/TLS audit"""
         try:
-            from redsentinel.tools.ssl_tools import comprehensive_ssl_analysis
-            results = await comprehensive_ssl_analysis(target, 443)
+            from redsentinel.tools.recon_advanced import professional_ssl_audit
+            
+            self.log(f"[*] Starting professional SSL/TLS audit...")
+            
+            results = await professional_ssl_audit(target, 443)
             self.progress_bar.set(1.0)
-            self.log("[+] SSL/TLS analysis complete:")
-            self.log(str(results) if results else "Aucun résultat")
+            
+            self.log(f"\n[+] SSL/TLS Audit Results:")
+            self.log(f"  • Overall Grade: {results.get('grade', 'N/A')}")
+            
+            if results.get("certificate"):
+                cert = results["certificate"]
+                self.log(f"\n[*] Certificate Details:")
+                subject = cert.get("subject", {})
+                if subject:
+                    self.log(f"  • Subject: {subject}")
+                issuer = cert.get("issuer", {})
+                if issuer:
+                    self.log(f"  • Issuer: {issuer}")
+                if cert.get("notAfter"):
+                    self.log(f"  • Expires: {cert.get('notAfter')}")
+                
+                san = cert.get("subjectAltName", [])
+                if san:
+                    self.log(f"  • SAN: {len(san)} alternate names")
+            
+            if results.get("protocols"):
+                self.log(f"\n[*] Protocols:")
+                for proto, info in results["protocols"].items():
+                    self.log(f"  • {proto}: {info}")
+            
+            if results.get("vulnerabilities"):
+                self.log(f"\n[!] Security Issues ({len(results['vulnerabilities'])}):")
+                for vuln in results["vulnerabilities"]:
+                    self.log(f"  • {vuln}")
+            
+            if results.get("recommendations"):
+                self.log(f"\n[*] Recommendations:")
+                for rec in results["recommendations"]:
+                    self.log(f"  • {rec}")
+                    
         except Exception as e:
             self.log(f"ERROR: {str(e)}")
+            import traceback
+            self.log(traceback.format_exc())
         finally:
             self.ssl_btn.configure(state="normal")
     
@@ -394,4 +514,31 @@ class ReconTab:
     def clear_results(self):
         """Efface les résultats"""
         self.results_text.delete("1.0", "end")
+    
+    async def _full_recon_pipeline(self, target: str):
+        """Pipeline professionnel complet"""
+        try:
+            from redsentinel.tools.recon_pro import full_recon_pipeline
+            
+            results = await full_recon_pipeline(target)
+            self.progress_bar.set(1.0)
+            
+            self.log("\n" + "=" * 80)
+            self.log("RECONNAISSANCE SUMMARY")
+            self.log("=" * 80)
+            
+            summary = results.get("summary", {})
+            for key, value in summary.items():
+                self.log(f"  • {key.replace('_', ' ').title()}: {value}")
+            
+            self.log("\n" + "=" * 80)
+            self.log("[+] Full reconnaissance pipeline complete!")
+            self.log("=" * 80)
+            
+        except Exception as e:
+            self.log(f"ERROR: {str(e)}")
+            import traceback
+            self.log(traceback.format_exc())
+        finally:
+            self.full_recon_btn.configure(state="normal")
 

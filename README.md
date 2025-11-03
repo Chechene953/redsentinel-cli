@@ -139,16 +139,18 @@ bash reinstall.sh
 - **GUI moderne** : Interface graphique intuitive avec CustomTkinter
 
 **Fonctionnalités complètes :**
-- Reconnaissance et énumération (DNS, sous-domaines, certificats SSL/TLS)
-- Scan de ports et services (Nmap, Masscan, Quick Port Scan)
-- Analyse de vulnérabilités (Nuclei, Nikto, CMS scanners)
-- Classification OWASP Top 10 2021 automatique
-- Intelligence menaces et corrélation de données
-- Tests de sécurité API et applications web
-- Exploitation et bruteforce (ffuf, Hydra/Medusa)
-- Gestion de cibles et monitoring continu
-- Analyses IA pour découverte automatique et recommandations intelligentes
-- Workflows automatisés pour audits complets
+- **Reconnaissance professionnelle avancée** : Pipeline complet passif+actif (15+ sources OSINT, DNS bruteforce, reverse DNS, historique)
+- **Énumération multi-sources** : crt.sh, Certspotter, URLScan, AlienVault, HackerTarget, SecurityTrails
+- **Scan de ports** : Profiling de services et bannières automatisés, détection OS, 200 connexions concurrentes
+- **Analyse DNS** : Tous enregistrements (A/AAAA/MX/TXT/NS/CNAME/SOA/SRV/PTR/CAA), détection AXFR, vérifications SPF/DMARC
+- **Audit SSL/TLS** : Certification, protocoles, vulnérabilités, notes de sécurité (style SSL Labs)
+- **Détection technologies** : Serveurs, frameworks, CMS, CDN, WAF
+- **Cloud reconnaissance** : S3/GCP/Azure, Cloudflare, historique DNS
+- **Analyse de vulnérabilités** : Nuclei, Nikto, scanners CMS, CVE (OWASP Top 10 2021)
+- **IA et automatisation** : Découverte, recommandations, chemins d’attaque, corrélations
+- **Exploitation** : ffuf, Hydra/Medusa, recherche d’exploits (ExploitDB/MSF)
+- **OSINT et TI** : Shodan, Censys, email, GitHub, fuites éventuelles, corrélations
+- **Gestion et monitoring** : Cibles, surveillance continue, workflows presets
 
 ## Licence et Utilisation
 
