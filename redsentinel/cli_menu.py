@@ -6,6 +6,7 @@ RedSentinel CLI - Interface principale avec design stylé
 import asyncio
 import sys
 import time
+import os
 
 from rich.table import Table
 from rich.progress import Progress, BarColumn, SpinnerColumn, TextColumn
@@ -40,6 +41,8 @@ from redsentinel.intel.threat_intel import comprehensive_threat_intel
 from redsentinel.intel.correlation import correlate_scan_results
 from redsentinel.attacks.password_tools import hydra_scan, medusa_scan, john_hash_crack, hashcat_crack, comprehensive_password_attack
 from redsentinel.attacks.exploit_framework import searchsploit_search, suggest_msf_modules, comprehensive_exploit_search
+from redsentinel.attacks.login_bruteforce import login_bruteforce, generate_common_usernames, generate_common_passwords, load_wordlist_from_file, load_rockyou_wordlist
+from redsentinel.attacks.hash_cracking import crack_hash, detect_hash_type
 from redsentinel.ai.discovery import automated_discovery_analysis, generate_attack_path, PatternRecognizer, SmartRecommendation, AnomalyDetector
 from redsentinel.osint.shodan_client import shodan_search_host, shodan_certificate_search
 from redsentinel.osint.censys_client import censys_search_host, censys_certificate_search
@@ -1597,8 +1600,10 @@ def interactive_menu():
             "[bold red][4] EXPLOITATION & ATTACKS[/bold red]\n"
             "   4.1 Directory Brute Force (ffuf)\n"
             "   4.2 Password Attack (Hydra/Medusa)\n"
-            "   4.3 Exploit Search (ExploitDB/MSF)\n"
-            "   4.4 API Security Testing\n\n"
+            "   4.3 Login Page Brute Force\n"
+            "   4.4 Hash Cracking (Hashcat/John)\n"
+            "   4.5 Exploit Search (ExploitDB/MSF)\n"
+            "   4.6 API Security Testing\n\n"
             "[bold green][5] AI & AUTOMATION[/bold green]\n"
             "   5.1 AI-Powered Discovery\n"
             "   5.2 Smart Recommendations\n"
@@ -1812,6 +1817,187 @@ def interactive_menu():
                 loop.run_until_complete(do_password_attack(target, protocol))
             
             elif choice == "4.3":
+                console.print()
+                warning("UTILISATION AUTORISÉE UNIQUEMENT - ILLÉGAL SANS PERMISSION !")
+                console.print()
+                url = Prompt.ask("URL de la page de login", default="").strip()
+                if not url:
+                    error("URL requise")
+                    continue
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                
+                mode = Prompt.ask("Mode (username+password / username / password)", default="username+password")
+                
+                username_list = None
+                password_list = None
+                fixed_username = None
+                fixed_password = None
+                
+                if mode == "username+password":
+                    use_list = Prompt.ask("Utiliser wordlist (o/N)", default="N")
+                    if use_list.lower() == "o":
+                        list_type = Prompt.ask("Type (file/rockyou)", default="file")
+                        if list_type.lower() == "rockyou":
+                            info("Chargement de RockYou...")
+                            password_list = load_rockyou_wordlist()
+                            if not password_list:
+                                warning("RockYou non disponible, utilisation des mots de passe communs")
+                                password_list = generate_common_passwords()
+                            username_list = generate_common_usernames()
+                        else:
+                            userfile = Prompt.ask("Fichier usernames (chemin)", default="")
+                            passfile = Prompt.ask("Fichier passwords (chemin)", default="")
+                            if userfile:
+                                username_list = load_wordlist_from_file(userfile)
+                            else:
+                                username_list = generate_common_usernames()
+                            if passfile:
+                                password_list = load_wordlist_from_file(passfile)
+                            else:
+                                password_list = generate_common_passwords()
+                    else:
+                        username_list = generate_common_usernames()
+                        password_list = generate_common_passwords()
+                elif mode == "username":
+                    fixed_password = Prompt.ask("Password fixe", default="")
+                    use_list = Prompt.ask("Utiliser wordlist (o/N)", default="N")
+                    if use_list.lower() == "o":
+                        userfile = Prompt.ask("Fichier usernames (chemin)", default="")
+                        if userfile:
+                            username_list = load_wordlist_from_file(userfile)
+                        else:
+                            username_list = generate_common_usernames()
+                    else:
+                        username_list = generate_common_usernames()
+                elif mode == "password":
+                    fixed_username = Prompt.ask("Username fixe", default="")
+                    use_list = Prompt.ask("Utiliser wordlist (o/N)", default="N")
+                    if use_list.lower() == "o":
+                        list_type = Prompt.ask("Type (file/rockyou)", default="rockyou")
+                        if list_type.lower() == "rockyou":
+                            info("Chargement de RockYou...")
+                            password_list = load_rockyou_wordlist()
+                            if not password_list:
+                                warning("RockYou non disponible, utilisation des mots de passe communs")
+                                password_list = generate_common_passwords()
+                        else:
+                            passfile = Prompt.ask("Fichier passwords (chemin)", default="")
+                            if passfile:
+                                password_list = load_wordlist_from_file(passfile)
+                            else:
+                                password_list = generate_common_passwords()
+                    else:
+                        password_list = generate_common_passwords()
+                
+                console.print()
+                info(f"Brute forcing {url}...")
+                console.print()
+                
+                results = loop.run_until_complete(login_bruteforce(
+                    url,
+                    username_list=username_list,
+                    password_list=password_list,
+                    fixed_username=fixed_username,
+                    fixed_password=fixed_password
+                ))
+                
+                if results:
+                    console.print()
+                    success(f"[+] {len(results)} credentials valides trouvés:")
+                    table_config = get_table_config()
+                    table = Table(show_header=True, header_style=table_config["header_style"],
+                                 border_style=table_config["border_style"],
+                                 title="[bold]Credentials Valides[/bold]")
+                    table.add_column("Username", style="cyan")
+                    table.add_column("Password", style="red")
+                    table.add_column("Status", style="green")
+                    for r in results:
+                        table.add_row(r["username"], r["password"], str(r["status"]))
+                    console.print(table)
+                else:
+                    warning("Aucun credential valide trouvé")
+            
+            elif choice == "4.4":
+                console.print()
+                warning("UTILISATION AUTORISÉE UNIQUEMENT - ILLÉGAL SANS PERMISSION !")
+                console.print()
+                
+                hash_input = Prompt.ask("Hash à cracker").strip()
+                if not hash_input:
+                    error("Hash requis")
+                    continue
+                
+                # Détecter le type de hash
+                detected_type = detect_hash_type(hash_input)
+                if detected_type:
+                    info(f"Type détecté: {detected_type}")
+                    use_auto = Prompt.ask("Utiliser le type détecté ? (O/n)", default="O")
+                    if use_auto.lower() == "o":
+                        hash_type = detected_type
+                    else:
+                        hash_type = None
+                else:
+                    hash_type = None
+                
+                # Demander le type si non détecté ou si rejeté
+                if not hash_type:
+                    console.print()
+                    info("Types de hash supportés: md5, sha1, sha256, sha512, bcrypt, nthash, lm,")
+                    info("  sha256-crypt, sha512-crypt, scrypt, pbkdf2-sha256, pbkdf2-sha512,")
+                    info("  argon2, mysql, mssql, apache, etc.")
+                    console.print()
+                    hash_type = Prompt.ask("Type de hash", default="auto")
+                    if hash_type.lower() == "auto":
+                        hash_type = None
+                
+                # Choisir l'outil
+                tool = Prompt.ask("Outil (hashcat/john)", default="hashcat")
+                
+                # Choisir la wordlist
+                use_rockyou = Prompt.ask("Utiliser RockYou ? (O/n)", default="O")
+                wordlist_path = None
+                if use_rockyou.lower() != "o":
+                    wordlist_path = Prompt.ask("Chemin vers la wordlist", default="")
+                    if not wordlist_path or not os.path.exists(wordlist_path):
+                        wordlist_path = None
+                
+                console.print()
+                info(f"Cracking du hash avec {tool}...")
+                console.print()
+                
+                # Lancer le cracking (fonction synchrone)
+                result = crack_hash(
+                    hash_input,
+                    hash_type=hash_type,
+                    tool=tool.lower(),
+                    wordlist=wordlist_path,
+                    use_rockyou=use_rockyou.lower() == "o"
+                )
+                
+                # Afficher les résultats
+                if result.get("success"):
+                    console.print()
+                    success("[+] MOT DE PASSE TROUVÉ:")
+                    table_config = get_table_config()
+                    table = Table(show_header=False, header_style=table_config["header_style"],
+                                 border_style=table_config["border_style"])
+                    table.add_column("", style="cyan")
+                    table.add_column("", style="green")
+                    table.add_row("Type:", result.get("hash_type", "inconnu"))
+                    table.add_row("Méthode:", result.get("method", "").upper())
+                    table.add_row("Mot de passe:", result.get("password", ""))
+                    table.add_row("Wordlist:", result.get("wordlist", ""))
+                    console.print(table)
+                else:
+                    console.print()
+                    warning("[!] Mot de passe non trouvé")
+                    if result.get("error"):
+                        error(f"Erreur: {result['error']}")
+                    if result.get("message"):
+                        info(f"Info: {result['message']}")
+            
+            elif choice == "4.5":
                 target = Prompt.ask("Cible", default="example.com").strip()
                 if not target:
                     error("La cible est requise")
@@ -1823,7 +2009,7 @@ def interactive_menu():
                 console.print()
                 loop.run_until_complete(do_exploit_search(service, version))
             
-            elif choice == "4.4":
+            elif choice == "4.6":
                 target = Prompt.ask("Cible", default="example.com").strip()
                 if not target:
                     error("La cible est requise")

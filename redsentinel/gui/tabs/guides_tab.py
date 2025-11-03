@@ -65,6 +65,14 @@ class GuidesTab:
             height=40
         ).pack(side="left", padx=5)
         
+        ctk.CTkButton(
+            buttons_frame,
+            text="Privilege Escalation",
+            command=lambda: self.show_category("privesc"),
+            width=200,
+            height=40
+        ).pack(side="left", padx=5)
+        
         # Recherche
         search_frame = ctk.CTkFrame(self.parent)
         search_frame.pack(fill="x", padx=20, pady=(0, 20))

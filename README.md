@@ -139,7 +139,7 @@ bash reinstall.sh
 - **GUI moderne** : Interface graphique intuitive avec CustomTkinter
 
 **Fonctionnalités complètes :**
-- **Guides de pentest** : Tutoriels (28 vulnérabilités web/réseau/cloud), étapes, commandes d'exemple, outputs attendus, mitigation
+- **Guides de pentest** : Tutoriels (36 vulnérabilités + privesc web/réseau/cloud/linux/windows), étapes, commandes d'exemple, outputs attendus, mitigation
 - **Reconnaissance professionnelle avancée** : Pipeline complet passif+actif (15+ sources OSINT, DNS bruteforce, reverse DNS, historique)
 - **Énumération multi-sources** : crt.sh, Certspotter, URLScan, AlienVault, HackerTarget, SecurityTrails
 - **Scan de ports** : Profiling de services et bannières automatisés, détection OS, 200 connexions concurrentes
