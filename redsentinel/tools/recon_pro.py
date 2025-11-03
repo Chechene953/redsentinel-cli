@@ -114,8 +114,8 @@ async def passive_recon_complete(domain: str) -> Dict:
         # 4. CLOUDFLARE DETECTION
         print(f"[*] Passive: Cloudflare/CDN detection...")
         from redsentinel.tools.cloud_tools import cloudflare_detection, cloud_provider_detection
-        results["cloudflare_check"] = cloudflare_detection(domain)
-        results["cloud_provider"] = cloud_provider_detection(domain)
+        results["cloudflare_check"] = await asyncio.to_thread(cloudflare_detection, domain)
+        results["cloud_provider"] = await asyncio.to_thread(cloud_provider_detection, domain)
         
         # 5. WAF DETECTION
         print(f"[*] Passive: WAF detection...")
@@ -130,7 +130,7 @@ async def passive_recon_complete(domain: str) -> Dict:
         
         # 7. CMS DETECTION
         from redsentinel.tools.cms_scanners import cms_detection
-        cms_result = await cms_detection(f"https://{domain}")
+        cms_result = await asyncio.to_thread(cms_detection, f"https://{domain}")
         results["cms_info"] = cms_result
         
         # 8. CLOUD S3/GCP/AZURE BUCKETS
