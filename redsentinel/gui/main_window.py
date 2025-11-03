@@ -30,27 +30,8 @@ def load_design_tokens():
 
 DESIGN_TOKENS = load_design_tokens()
 
-# Thème personnalisé RedSentinel
-if DESIGN_TOKENS:
-    REDSENTINEL_THEME = {
-        "dark": {
-            "fg_color": DESIGN_TOKENS["colors"]["black"]["deep"],
-            "top_level_bg": DESIGN_TOKENS["colors"]["black"]["anthracite"],
-            "secondary_bg": DESIGN_TOKENS["colors"]["black"]["gray_dark"],
-            "main_bg": DESIGN_TOKENS["colors"]["black"]["gray_medium"],
-            "button_fg": DESIGN_TOKENS["colors"]["red"]["primary"],
-            "button_hover": DESIGN_TOKENS["colors"]["red"]["bright"],
-            "accent": DESIGN_TOKENS["colors"]["accent"]["cyan"],
-            "success": DESIGN_TOKENS["colors"]["accent"]["green"],
-            "warning": DESIGN_TOKENS["colors"]["accent"]["yellow"],
-            "text_color": DESIGN_TOKENS["colors"]["white"]["soft"]
-        }
-    }
-    
-    # Appliquer le thème personnalisé
-    ctk.set_default_color_theme(REDSENTINEL_THEME)
-else:
-    ctk.set_default_color_theme("blue")
+# Configuration du thème par défaut
+ctk.set_default_color_theme("blue")
 
 
 class RedSentinelGUI(ctk.CTk):
