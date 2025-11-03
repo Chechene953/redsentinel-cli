@@ -1606,6 +1606,9 @@ def interactive_menu():
             "[bold blue][6] MANAGEMENT & MONITORING[/bold blue]\n"
             "   6.1 Target Management\n"
             "   6.2 Continuous Monitoring\n\n"
+            "[bold white][7] GUIDES & TUTORIELS[/bold white]\n"
+            "   7.1 Guides de Pentest (Web, Réseau, Cloud)\n"
+            "   7.2 Recherche de Vulnérabilités\n\n"
             "═══════════════════════════════════════════════════════════\n\n"
             "  [red][0][/red] Exit"
         )
@@ -1874,6 +1877,15 @@ def interactive_menu():
                     continue
                 console.print()
                 loop.run_until_complete(do_continuous_monitoring(target))
+            
+            # Catégorie 7: GUIDES & TUTORIELS
+            elif choice == "7.1":
+                from redsentinel.guides.cli_viewer import interactive_guides_menu
+                interactive_guides_menu()
+            
+            elif choice == "7.2":
+                from redsentinel.guides.cli_viewer import quick_search_menu
+                quick_search_menu()
             
             else:
                 error("Choix invalide")

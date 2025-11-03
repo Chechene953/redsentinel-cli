@@ -14,6 +14,7 @@ from .tabs.osint_tab import OSINTTab
 from .tabs.attacks_tab import AttacksTab
 from .tabs.ai_tab import AITab
 from .tabs.management_tab import ManagementTab
+from .tabs.guides_tab import GuidesTab
 
 # Configuration CustomTkinter
 ctk.set_appearance_mode("dark")
@@ -156,7 +157,8 @@ class RedSentinelGUI(ctk.CTk):
             ("OSINT & Intelligence", OSINTTab),
             ("Exploitation & Attacks", AttacksTab),
             ("AI & Automation", AITab),
-            ("Management", ManagementTab)
+            ("Management", ManagementTab),
+            ("Guides", GuidesTab)
         ]
         
         self.tab_instances = {}
