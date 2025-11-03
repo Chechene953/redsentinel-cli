@@ -1467,7 +1467,7 @@ def interactive_menu():
     
     # Site web
     console.print(Panel.fit(
-        "[bold magenta]🌐 Visitez notre site :[/bold magenta]\n"
+        "[bold magenta]Website :[/bold magenta]\n"
         "[bold cyan underline]https://redsentinel.fr[/bold cyan underline]",
         border_style="magenta",
         padding=(0, 3)
@@ -1479,33 +1479,41 @@ def interactive_menu():
     
     while True:
         console.print()
-        # Menu panel
+        # Menu panel hiérarchique
         menu_text = (
-            "[bold]Commandes disponibles:[/bold]\n\n"
-            "  [cyan][1][/cyan] Subdomain Enumeration (crt.sh)\n"
-            "  [cyan][2][/cyan] Quick Port Scan (TCP Connect)\n"
-            "  [cyan][3][/cyan] Nmap Scan (Service Detection)\n"
-            "  [cyan][4][/cyan] Web HTTP Checks\n"
-            "  [cyan][5][/cyan] Nuclei Vulnerability Scan\n"
-            "  [cyan][6][/cyan] Directory Brute Force (ffuf)\n"
-            "  [cyan][7][/cyan] SSL/TLS Analysis\n"
-            "  [cyan][8][/cyan] DNS Enumeration\n"
-            "  [cyan][9][/cyan] Nikto Web Vuln Scanner\n"
-            "  [cyan][10][/cyan] Automated Workflows\n"
-            "  [cyan][11][/cyan] CMS Detection & Scan\n"
-            "  [cyan][12][/cyan] Cloud Infrastructure Scan\n"
-            "  [cyan][13][/cyan] Threat Intelligence\n"
-            "  [cyan][14][/cyan] Data Correlation\n"
-            "  [cyan][15][/cyan] Masscan (Ultra-Fast Ports)\n"
-            "  [cyan][16][/cyan] Password Attack (Hydra/Medusa)\n"
-            "  [cyan][17][/cyan] Exploit Search (ExploitDB/MSF)\n"
-            "  [cyan][18][/cyan] AI-Powered Discovery\n"
-            "  [cyan][19][/cyan] Smart Recommendations\n"
-            "  [cyan][20][/cyan] Complete OSINT Gathering\n"
-            "  [cyan][21][/cyan] CVE Matching & Analysis\n"
-            "  [cyan][22][/cyan] API Security Testing\n"
-            "  [cyan][23][/cyan] Target Management\n"
-            "  [cyan][24][/cyan] Continuous Monitoring\n"
+            "[bold]REDSENTINEL v6.0 ULTRA[/bold]\n\n"
+            "═══════════════════════════════════════════════════════════\n\n"
+            "[bold cyan][1] RECONNAISSANCE & ENUMERATION[/bold cyan]\n"
+            "   1.1 Subdomain Discovery (crt.sh)\n"
+            "   1.2 DNS Enumeration Complete\n"
+            "   1.3 Quick Port Scan (TCP)\n"
+            "   1.4 Nmap Scan (Service Detection)\n"
+            "   1.5 Masscan (Ultra-Fast)\n"
+            "   1.6 SSL/TLS Analysis\n"
+            "   1.7 Cloud Infrastructure Discovery\n\n"
+            "[bold yellow][2] VULNERABILITY ANALYSIS[/bold yellow]\n"
+            "   2.1 Nuclei Vulnerability Scan\n"
+            "   2.2 Nikto Web Scanner\n"
+            "   2.3 CVE Matching & Analysis\n"
+            "   2.4 CMS Detection & Scan\n"
+            "   2.5 Web HTTP Checks\n\n"
+            "[bold magenta][3] OSINT & INTELLIGENCE[/bold magenta]\n"
+            "   3.1 Complete OSINT Gathering\n"
+            "   3.2 Threat Intelligence\n"
+            "   3.3 Data Correlation\n\n"
+            "[bold red][4] EXPLOITATION & ATTACKS[/bold red]\n"
+            "   4.1 Directory Brute Force (ffuf)\n"
+            "   4.2 Password Attack (Hydra/Medusa)\n"
+            "   4.3 Exploit Search (ExploitDB/MSF)\n"
+            "   4.4 API Security Testing\n\n"
+            "[bold green][5] AI & AUTOMATION[/bold green]\n"
+            "   5.1 AI-Powered Discovery\n"
+            "   5.2 Smart Recommendations\n"
+            "   5.3 Automated Workflows\n\n"
+            "[bold blue][6] MANAGEMENT & MONITORING[/bold blue]\n"
+            "   6.1 Target Management\n"
+            "   6.2 Continuous Monitoring\n\n"
+            "═══════════════════════════════════════════════════════════\n\n"
             "  [red][0][/red] Exit"
         )
         
@@ -1527,159 +1535,243 @@ def interactive_menu():
             console.print()
             break
         
+        # Routage hiérarchique par catégories
         try:
-            target = Prompt.ask("Cible", default="example.com").strip()
-            if not target or target == "":
-                error("La cible est requise")
-                continue
-            
-            if choice == "1":
+            # Catégorie 1: RECONNAISSANCE & ÉNUMÉRATION
+            if choice == "1.1":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
                 console.print()
                 loop.run_until_complete(do_recon(target))
                 console.print()
             
-            elif choice == "2":
+            elif choice == "1.2":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_dns_enum(target))
+            
+            elif choice == "1.3":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
                 ports_input = Prompt.ask("Ports (séparés par virgule)", default="80,443,22,8080")
                 ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
-                
                 console.print()
                 info("Récupération des sous-domaines...")
                 subs = loop.run_until_complete(do_recon(target))
                 hosts = [target] + subs[:20]
-                
                 console.print()
                 loop.run_until_complete(do_portscan(hosts, ports))
             
-            elif choice == "3":
-                args_input = Prompt.ask("Arguments Nmap (appuyez sur Entrée pour les valeurs par défaut)", default="")
+            elif choice == "1.4":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                args_input = Prompt.ask("Arguments Nmap (optionnel)", default="")
                 nmap_args = args_input if args_input else None
                 hosts = [target]
+                console.print()
                 loop.run_until_complete(do_nmap_scan(hosts, nmap_args))
             
-            elif choice == "4":
-                loop.run_until_complete(do_webchecks([target]))
-            
-            elif choice == "5":
-                # Nuclei Vulnerability Scan
+            elif choice == "1.5":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                ports_input = Prompt.ask("Ports (ex: 1-1000)", default="1-65535")
                 console.print()
-                severity_choice = Prompt.ask("Filtre de sévérité (critical,high,medium,low,info) ou all", default="all")
-                if severity_choice.lower() != "all":
-                    severity = severity_choice
-                else:
-                    severity = None
-                
-                loop.run_until_complete(do_nuclei_scan([target], severity=severity))
-            
-            elif choice == "6":
-                # Directory Brute Force (ffuf)
-                url = Prompt.ask("URL cible", default=f"https://{target}")
-                if not url.startswith(("http://", "https://")):
-                    url = f"https://{url}"
-                loop.run_until_complete(do_ffuf_scan(url))
-            
-            elif choice == "7":
-                # SSL/TLS Analysis
-                port_input = Prompt.ask("Port", default="443")
-                port = int(port_input) if port_input.isdigit() else 443
-                loop.run_until_complete(do_ssl_analysis(target, port))
-            
-            elif choice == "8":
-                # DNS Enumeration
-                loop.run_until_complete(do_dns_enum(target))
-            
-            elif choice == "9":
-                # Nikto Web Vulnerability Scanner
-                url = Prompt.ask("URL cible", default=f"https://{target}")
-                if not url.startswith(("http://", "https://")):
-                    url = f"https://{url}"
-                loop.run_until_complete(do_nikto_scan(url))
-            
-            elif choice == "10":
-                # Automated Workflows
-                console.print()
-                workflows = get_available_workflows()
-                info(f"Workflows disponibles : {', '.join(workflows)}")
-                console.print()
-                
-                workflow_choice = Prompt.ask(
-                    "Sélectionnez un workflow (quick/standard/deep/vulnerability)",
-                    default="quick"
-                )
-                
-                if workflow_choice in workflows:
-                    loop.run_until_complete(do_workflow(workflow_choice, target))
-                else:
-                    error(f"Workflow inconnu : {workflow_choice}")
-            
-            elif choice == "11":
-                # CMS Detection & Scan
-                url = Prompt.ask("URL cible", default=f"https://{target}")
-                if not url.startswith(("http://", "https://")):
-                    url = f"https://{url}"
-                loop.run_until_complete(do_cms_scan(url))
-            
-            elif choice == "12":
-                # Cloud Infrastructure Scan
-                loop.run_until_complete(do_cloud_scan(target))
-            
-            elif choice == "13":
-                # Threat Intelligence
-                loop.run_until_complete(do_threat_intel(target))
-            
-            elif choice == "14":
-                # Data Correlation
-                loop.run_until_complete(do_data_correlation(target))
-            
-            elif choice == "15":
-                # Masscan Ultra-Fast Port Scan
-                ports_input = Prompt.ask("Ports à scanner (ex: 1-1000)", default="1-65535")
                 loop.run_until_complete(do_masscan(target, ports=ports_input))
             
-            elif choice == "16":
-                # Password Attack
+            elif choice == "1.6":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                port_input = Prompt.ask("Port", default="443")
+                port = int(port_input) if port_input.isdigit() else 443
+                console.print()
+                loop.run_until_complete(do_ssl_analysis(target, port))
+            
+            elif choice == "1.7":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_cloud_scan(target))
+            
+            # Catégorie 2: ANALYSE DE VULNÉRABILITÉS
+            elif choice == "2.1":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                severity_choice = Prompt.ask("Filtre de sévérité (critical,high,medium,low,info) ou all", default="all")
+                severity = severity_choice if severity_choice.lower() != "all" else None
+                console.print()
+                loop.run_until_complete(do_nuclei_scan([target], severity=severity))
+            
+            elif choice == "2.2":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                url = Prompt.ask("URL cible", default=f"https://{target}")
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                console.print()
+                loop.run_until_complete(do_nikto_scan(url))
+            
+            elif choice == "2.3":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_cve_matching("example"))
+            
+            elif choice == "2.4":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                url = Prompt.ask("URL cible", default=f"https://{target}")
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                console.print()
+                loop.run_until_complete(do_cms_scan(url))
+            
+            elif choice == "2.5":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_webchecks([target]))
+            
+            # Catégorie 3: OSINT & INTELLIGENCE
+            elif choice == "3.1":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_osint_comprehensive(target))
+            
+            elif choice == "3.2":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_threat_intel(target))
+            
+            elif choice == "3.3":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_data_correlation(target))
+            
+            # Catégorie 4: EXPLOITATION & ATTACKS
+            elif choice == "4.1":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                url = Prompt.ask("URL cible", default=f"https://{target}")
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                console.print()
+                loop.run_until_complete(do_ffuf_scan(url))
+            
+            elif choice == "4.2":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
                 console.print()
                 warning("⚠️ UTILISATION AUTORISÉE UNIQUEMENT - ILLÉGAL SANS PERMISSION !")
                 console.print()
                 protocol = Prompt.ask("Protocole (ssh/ftp/http/smb)", default="ssh")
+                console.print()
                 loop.run_until_complete(do_password_attack(target, protocol))
             
-            elif choice == "17":
-                # Exploit Search
+            elif choice == "4.3":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
                 console.print()
                 service = Prompt.ask("Nom du service (ex: apache, mysql)", default="apache")
                 version = Prompt.ask("Version (optionnel)", default="")
                 version = version if version else None
+                console.print()
                 loop.run_until_complete(do_exploit_search(service, version))
             
-            elif choice == "18":
-                # AI-Powered Discovery
-                loop.run_until_complete(do_ai_discovery(target))
-            
-            elif choice == "19":
-                # Smart Recommendations
-                loop.run_until_complete(do_smart_recommendations(target))
-            
-            elif choice == "20":
-                # Complete OSINT Gathering
-                loop.run_until_complete(do_osint_comprehensive(target))
-            
-            elif choice == "21":
-                # CVE Matching & Analysis
-                loop.run_until_complete(do_cve_matching("example"))
-            
-            elif choice == "22":
-                # API Security Testing
+            elif choice == "4.4":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
                 url = Prompt.ask("URL de l'API", default=f"https://{target}/api")
+                console.print()
                 loop.run_until_complete(do_api_security_scan(url))
             
-            elif choice == "23":
-                # Target Management
+            # Catégorie 5: IA & AUTOMATION
+            elif choice == "5.1":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_ai_discovery(target))
+            
+            elif choice == "5.2":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                loop.run_until_complete(do_smart_recommendations(target))
+            
+            elif choice == "5.3":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
+                workflows = get_available_workflows()
+                info(f"Workflows disponibles : {', '.join(workflows)}")
+                console.print()
+                workflow_choice = Prompt.ask("Workflow (quick/standard/deep/vulnerability)", default="quick")
+                if workflow_choice in workflows:
+                    console.print()
+                    loop.run_until_complete(do_workflow(workflow_choice, target))
+                else:
+                    error(f"Workflow inconnu : {workflow_choice}")
+            
+            # Catégorie 6: MANAGEMENT & MONITORING
+            elif choice == "6.1":
+                console.print()
                 loop.run_until_complete(do_target_management())
             
-            elif choice == "24":
-                # Continuous Monitoring
+            elif choice == "6.2":
+                target = Prompt.ask("Cible", default="example.com").strip()
+                if not target:
+                    error("La cible est requise")
+                    continue
+                console.print()
                 loop.run_until_complete(do_continuous_monitoring(target))
-            
             
             else:
                 error("Choix invalide")
@@ -1718,12 +1810,30 @@ def main():
                 "Usage: [cyan]redsentinel[/cyan] [options]\n\n"
                 "Options:\n"
                 "  [cyan]-h, --help[/cyan]     Afficher cette aide\n"
-                "  [cyan]-v, --version[/cyan]  Afficher la version\n\n"
+                "  [cyan]-v, --version[/cyan]  Afficher la version\n"
+                "  [cyan]--gui[/cyan]          Lancer l'interface graphique\n\n"
                 "Launch interactive menu:\n"
-                "  [yellow]redsentinel[/yellow]",
+                "  [yellow]redsentinel[/yellow]\n\n"
+                "Launch GUI:\n"
+                "  [yellow]redsentinel --gui[/yellow]",
                 border_style="red"
             ))
             console.print()
+            return
+        elif arg in ["--gui", "-gui", "gui"]:
+            # Lancer l'interface graphique
+            try:
+                from redsentinel.gui import launch_gui
+                launch_gui()
+            except ImportError as e:
+                console.print()
+                error("Impossible de lancer la GUI. Vérifiez que customtkinter est installé:")
+                console.print(f"  [cyan]pip install customtkinter[/cyan]")
+                console.print()
+                console.print(f"Détails: {e}")
+            except Exception as e:
+                console.print()
+                error(f"Erreur lors du lancement de la GUI: {e}")
             return
     
     interactive_menu()

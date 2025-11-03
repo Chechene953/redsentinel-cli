@@ -75,8 +75,11 @@ sudo pip3 install -e . --upgrade --break-system-packages
 ## Utilisation
 
 ```bash
-# Menu interactif
+# Interface en ligne de commande (CLI)
 redsentinel
+
+# Interface graphique (GUI)
+redsentinel --gui
 
 # Commandes directes
 redsentinel --help
@@ -116,26 +119,36 @@ bash reinstall.sh
 
 ## Structure du Projet
 
-- `redsentinel/` : Code source (CLI, reconnaissance, scan, analyse)
+- `redsentinel/` : Code source (CLI, GUI, reconnaissance, scan, analyse)
+- `redsentinel/gui/` : Interface graphique moderne (CustomTkinter)
+- `redsentinel/cli_menu.py` : Menu interactif CLI
 - `redsentinel/tools/` : Wrappers pour outils externes
 - `redsentinel/osint/` : Sources OSINT
 - `redsentinel/intel/` : Modules d'intelligence
 - `redsentinel/attacks/` : Outils d'exploitation
 - `redsentinel/api/` : Tests de sécurité API
 - `redsentinel/owasp/` : Mapping OWASP Top 10
+- `redsentinel/ai/` : Modules IA et automatisation
 - `config.yaml` : Configuration par défaut
 - `requirements.txt` : Dépendances Python
 
 ## Fonctionnalités Principales
 
-- Reconnaissance et énumération (DNS, sous-domaines, certificats)
-- Scan de ports et services (Nmap, Masscan)
-- Analyse de vulnérabilités (Nuclei, CMS scanners)
+**Deux interfaces disponibles :**
+- **CLI interactif** : Menu hiérarchique en terminal avec Rich
+- **GUI moderne** : Interface graphique intuitive avec CustomTkinter
+
+**Fonctionnalités complètes :**
+- Reconnaissance et énumération (DNS, sous-domaines, certificats SSL/TLS)
+- Scan de ports et services (Nmap, Masscan, Quick Port Scan)
+- Analyse de vulnérabilités (Nuclei, Nikto, CMS scanners)
 - Classification OWASP Top 10 2021 automatique
 - Intelligence menaces et corrélation de données
 - Tests de sécurité API et applications web
+- Exploitation et bruteforce (ffuf, Hydra/Medusa)
 - Gestion de cibles et monitoring continu
-- Analyses IA pour découverte automatique
+- Analyses IA pour découverte automatique et recommandations intelligentes
+- Workflows automatisés pour audits complets
 
 ## Licence et Utilisation
 

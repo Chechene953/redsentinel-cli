@@ -1,0 +1,2 @@
+"""Tabs pour RedSentinel GUI"""
+

@@ -8,3 +8,4 @@ python-nmap
 rich
 click
 sqlalchemy
+customtkinter

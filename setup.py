@@ -27,6 +27,7 @@ setup(
     entry_points={
         "console_scripts": [
             "redsentinel=redsentinel.cli_menu:main",
+            "redsentinel-gui=redsentinel.gui:launch_gui",
         ],
     },
     classifiers=[
