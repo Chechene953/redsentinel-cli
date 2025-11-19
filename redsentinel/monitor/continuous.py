@@ -2,14 +2,21 @@
 """
 Continuous Monitoring System for RedSentinel
 Monitors targets for changes and generates alerts
+Enhanced with configurable alerts, CI/CD integration, and webhooks
 """
 
 import json
 import logging
+import asyncio
+import aiohttp
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional, Callable
+from redsentinel.monitor.change_detector import ChangeDetector
+from redsentinel.core.error_handler import get_error_handler, ErrorContext
 
 logger = logging.getLogger(__name__)
+error_handler = get_error_handler()
 
 
 class ContinuousMonitor:
@@ -20,6 +27,10 @@ class ContinuousMonitor:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         self.monitoring_data = self._load_monitoring()
         self.baselines = {}
+        self.change_detector = ChangeDetector()
+        self.alert_callbacks = []
+        self.webhook_urls = []
+        self.ci_cd_config = {}
     
     def _load_monitoring(self):
         """Load monitoring data"""
@@ -64,7 +75,7 @@ class ContinuousMonitor:
     
     def compare_to_baseline(self, target, current_data):
         """
-        Compare current data to baseline
+        Compare current data to baseline avec détection avancée
         
         Args:
             target: Target name
@@ -73,60 +84,36 @@ class ContinuousMonitor:
         Returns:
             dict with detected changes
         """
-        changes = {
-            "target": target,
-            "new_ips": [],
-            "new_ports": [],
-            "new_subdomains": [],
-            "removed_ips": [],
-            "removed_ports": [],
-            "removed_subdomains": []
-        }
-        
         if target not in self.monitoring_data["baselines"]:
             return {"error": "No baseline established for target"}
         
         baseline = self.monitoring_data["baselines"][target]["data"]
         
-        # Compare subdomains
-        baseline_subs = set(baseline.get("subdomains", []))
-        current_subs = set(current_data.get("subdomains", []))
+        # Utiliser le détecteur de changements avancé
+        changes = self.change_detector.compare_scans(baseline, current_data)
+        changes["target"] = target
         
-        changes["new_subdomains"] = list(current_subs - baseline_subs)
-        changes["removed_subdomains"] = list(baseline_subs - current_subs)
-        
-        # Compare open ports
-        baseline_ports = set(baseline.get("open_ports", []))
-        current_ports = set(current_data.get("open_ports", []))
-        
-        changes["new_ports"] = list(current_ports - baseline_ports)
-        changes["removed_ports"] = list(baseline_ports - current_ports)
+        # Filtrer le bruit
+        changes = self.change_detector.filter_noise(changes)
         
         return changes
     
-    def should_alert(self, changes):
+    def should_alert(self, changes, thresholds: Optional[Dict] = None):
         """
-        Determine if changes warrant an alert
+        Determine if changes warrant an alert avec seuils configurables
         
         Args:
             changes: Dict with detected changes
+            thresholds: Seuils personnalisés (optionnel)
         
         Returns:
             bool: Whether to alert
         """
-        # Alert on significant changes
-        if changes.get("new_ports"):
-            return True
-        if changes.get("new_subdomains"):
-            return True
-        if changes.get("new_ips"):
-            return True
-        
-        return False
+        return self.change_detector.should_alert(changes, thresholds)
     
     def generate_alert(self, changes):
         """
-        Generate alert for detected changes
+        Generate alert for detected changes avec message formaté
         
         Args:
             changes: Dict with detected changes
@@ -135,20 +122,97 @@ class ContinuousMonitor:
             dict with alert information
         """
         alert = {
-            "target": changes["target"],
+            "target": changes.get("target", "unknown"),
             "timestamp": datetime.now().isoformat(),
             "severity": "INFO",
-            "changes": changes
+            "changes": changes,
+            "message": self.change_detector.generate_alert_message(changes)
         }
         
-        # Determine severity
-        if changes.get("new_ports") or changes.get("new_subdomains"):
-            alert["severity"] = "WARNING"
+        # Déterminer la sévérité
+        stats = changes.get("statistics", {})
         
-        if len(changes.get("new_ports", [])) > 3 or len(changes.get("new_subdomains", [])) > 5:
+        if stats.get("total_new_vulns", 0) > 0:
+            # Vérifier la sévérité des nouvelles vulnérabilités
+            critical_vulns = [
+                v for v in changes.get("new_vulnerabilities", [])
+                if v.get("severity", "").upper() == "CRITICAL"
+            ]
+            if critical_vulns:
+                alert["severity"] = "CRITICAL"
+            elif stats["total_new_vulns"] >= 3:
+                alert["severity"] = "HIGH"
+            else:
+                alert["severity"] = "MEDIUM"
+        
+        elif stats.get("total_new_endpoints", 0) >= 10 or stats.get("total_new_subdomains", 0) >= 5:
             alert["severity"] = "HIGH"
+        elif stats.get("total_new_endpoints", 0) > 0 or stats.get("total_new_subdomains", 0) > 0:
+            alert["severity"] = "MEDIUM"
         
         return alert
+    
+    def add_alert_callback(self, callback: Callable):
+        """Ajoute un callback appelé lors d'une alerte"""
+        self.alert_callbacks.append(callback)
+    
+    def add_webhook(self, webhook_url: str):
+        """Ajoute une URL de webhook pour les alertes"""
+        self.webhook_urls.append(webhook_url)
+    
+    async def send_webhooks(self, alert: Dict):
+        """Envoie des alertes via webhooks"""
+        if not self.webhook_urls:
+            return
+        
+        async with aiohttp.ClientSession() as session:
+            for webhook_url in self.webhook_urls:
+                try:
+                    async with session.post(
+                        webhook_url,
+                        json=alert,
+                        timeout=aiohttp.ClientTimeout(total=10)
+                    ) as resp:
+                        if resp.status == 200:
+                            logger.info(f"Webhook sent successfully to {webhook_url}")
+                except Exception as e:
+                    error_handler.handle_error(e, ErrorContext("send_webhook", webhook_url))
+    
+    async def trigger_alert(self, alert: Dict):
+        """Déclenche une alerte avec tous les callbacks et webhooks"""
+        # Appeler les callbacks
+        for callback in self.alert_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(alert)
+                else:
+                    callback(alert)
+            except Exception as e:
+                error_handler.handle_error(e, ErrorContext("alert_callback", ""))
+        
+        # Envoyer les webhooks
+        await self.send_webhooks(alert)
+    
+    def configure_ci_cd(self, platform: str, config: Dict):
+        """
+        Configure l'intégration CI/CD
+        
+        Args:
+            platform: Plateforme CI/CD (github_actions, gitlab_ci, jenkins, azure_devops)
+            config: Configuration spécifique à la plateforme
+        """
+        self.ci_cd_config[platform] = config
+    
+    async def trigger_ci_cd(self, alert: Dict):
+        """Déclenche une action CI/CD selon la configuration"""
+        # Implémentation basique - peut être étendue selon les besoins
+        if "github_actions" in self.ci_cd_config:
+            # TODO: Implémenter déclenchement GitHub Actions
+            logger.info("GitHub Actions trigger not yet implemented")
+        
+        if "gitlab_ci" in self.ci_cd_config:
+            # TODO: Implémenter déclenchement GitLab CI
+            logger.info("GitLab CI trigger not yet implemented")
     
     def get_monitoring_status(self):
         """Get monitoring status for all targets"""
@@ -168,19 +232,21 @@ class ContinuousMonitor:
         return status
 
 
-def run_continuous_check(target, previous_data, current_data):
+async def run_continuous_check(target, previous_data, current_data, monitor: Optional[ContinuousMonitor] = None):
     """
-    Run a continuous monitoring check
+    Run a continuous monitoring check avec alertes améliorées
     
     Args:
         target: Target name
         previous_data: Previous scan data
         current_data: Current scan data
+        monitor: Instance de monitor (optionnel)
     
     Returns:
         dict with monitoring results
     """
-    monitor = ContinuousMonitor()
+    if monitor is None:
+        monitor = ContinuousMonitor()
     
     # Establish baseline if not exists
     if target not in monitor.monitoring_data["baselines"]:
@@ -193,6 +259,12 @@ def run_continuous_check(target, previous_data, current_data):
     # Check if alert needed
     if monitor.should_alert(changes):
         alert = monitor.generate_alert(changes)
+        await monitor.trigger_alert(alert)
+        
+        # Déclencher CI/CD si configuré
+        if monitor.ci_cd_config:
+            await monitor.trigger_ci_cd(alert)
+        
         return {
             "status": "changes_detected",
             "alert": alert,

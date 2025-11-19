@@ -1,29 +1,718 @@
-target_whitelist:
-  - "example.com"
+# RedSentinel Professional Configuration
+# Version: 7.0.0 - Machine de Guerre Cyber Edition
 
+# ============================================
+# GENERAL SETTINGS
+# ============================================
+general:
+  app_name: "RedSentinel Pro"
+  version: "7.0.0"
+  environment: "production"  # development, staging, production
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_dir: "./logs"
+  log_rotation: true
+  max_log_size_mb: 100
+  log_retention_days: 30
+  
+  # Legal & Compliance
+  target_whitelist:
+    - "example.com"
+  require_authorization: true
+  authorization_file: "./authorized_targets.txt"
+  audit_trail: true
+
+# ============================================
+# DATABASE CONFIGURATION (Phase 1)
+# ============================================
+database:
+  # Database Type: sqlite, postgresql
+  type: "sqlite"
+  
+  # SQLite Configuration
+  sqlite:
+    path: "./data/redsentinel.db"
+    enable_wal: true  # Write-Ahead Logging for better concurrency
+    
+  # PostgreSQL Configuration (Professional)
+  postgresql:
+    host: "localhost"
+    port: 5432
+    database: "redsentinel"
+    username: "redsentinel"
+    password: ""  # Use environment variable: REDSENTINEL_DB_PASSWORD
+    pool_size: 20
+    max_overflow: 10
+    ssl_mode: "prefer"
+    
+  # Database Features
+  encryption:
+    enabled: false
+    key_file: "./data/db_encryption.key"
+  backup:
+    enabled: true
+    interval_hours: 6
+    retention_days: 30
+    backup_dir: "./backups"
+  versioning:
+    enabled: true  # Track scan history for comparison
+
+# ============================================
+# WORKSPACE & SESSION MANAGEMENT (Phase 1)
+# ============================================
+workspaces:
+  default_workspace: "default"
+  auto_create: true
+  session_persistence: true
+  history_enabled: true
+  max_history_entries: 10000
+  enable_notes: true
+  enable_tags: true
+  collaboration:
+    enabled: false
+    export_format: "json"  # json, yaml
+
+# ============================================
+# RECONNAISSANCE & OSINT (Phase 2)
+# ============================================
+reconnaissance:
+  # Passive Reconnaissance
+  passive:
+    enabled: true
+    max_concurrent_sources: 10
+    timeout: 30
+    
+    # OSINT Sources
+    sources:
+      crt_sh: true
+      certspotter: true
+      virustotal: true
+      urlscan: true
+      alienvault: true
+      hackertarget: true
+      securitytrails: true
+      wayback_machine: true
+      common_crawl: true
+      github: true
+      pastebin: false  # Requires API key
+      trello: false
+      shodan: true
+      censys: true
+      zoomeye: false
+      binaryedge: false
+      
+    # DNS Intelligence
+    dns:
+      enable_history: true
+      enable_zone_transfer: true
+      nameserver_analysis: true
+      dns_bruteforce: true
+      wordlist: "/usr/share/wordlists/dns/subdomains-top1million-110000.txt"
+      
+    # Certificate Transparency
+    certificate_transparency:
+      enabled: true
+      all_ct_logs: true
+      historical_certs: true
+      expired_analysis: true
+      
+    # Cloud Asset Discovery
+    cloud:
+      enabled: true
+      aws_s3_bruteforce: true
+      azure_blob: true
+      gcp_bucket: true
+      cloudfront: true
+      digitalocean_spaces: true
+      wordlist: "./wordlists/cloud-assets.txt"
+      
+  # Active Reconnaissance
+  active:
+    enabled: true
+    
+    # Port Scanning
+    port_scan:
+      default_ports: "1-10000"
+      full_scan: false  # 1-65535
+      scan_types:
+        - "SYN"
+        - "ACK"
+        - "UDP"
+      service_detection: true
+      os_detection: true
+      firewall_detection: true
+      evasion_enabled: false
+      max_rate: 1000
+      
+    # Web Crawling
+    web_crawl:
+      enabled: true
+      max_depth: 5
+      max_pages: 1000
+      javascript_rendering: true
+      api_endpoint_discovery: true
+      parameter_extraction: true
+      forms_parsing: true
+      websocket_discovery: true
+      
+    # Technology Profiling
+    tech_stack:
+      enabled: true
+      waf_detection: true
+      cdn_detection: true
+      cms_detection: true
+      framework_detection: true
+      header_fingerprinting: true
+
+# ============================================
+# OSINT API KEYS (Phase 2)
+# ============================================
+osint:
+  shodan:
+    api_key: ""  # Or use REDSENTINEL_OSINT_SHODAN_API_KEY
+    enabled: false
+  censys:
+    api_id: ""
+    api_secret: ""
+    enabled: false
+  virustotal:
+    api_key: ""
+    enabled: false
+  securitytrails:
+    api_key: ""
+    enabled: false
+  github:
+    token: ""
+    enabled: false
+  haveibeenpwned:
+    api_key: ""
+    enabled: false
+  dehashed:
+    api_key: ""
+    enabled: false
+  leakcheck:
+    api_key: ""
+    enabled: false
+  hunter_io:
+    api_key: ""
+    enabled: false
+
+# ============================================
+# VULNERABILITY SCANNING (Phase 3)
+# ============================================
+vulnerability_scanning:
+  # Scanner Orchestration
+  orchestration:
+    auto_detect_tech: true
+    deduplication: true
+    false_positive_filtering: true
+    ml_filtering: false  # Machine Learning (Phase 7)
+    
+  # Multiple Scanners
+  scanners:
+    nuclei:
+      enabled: true
+      path: "/usr/bin/nuclei"
+      templates_dir: "~/nuclei-templates"
+      custom_templates_dir: "./custom-templates"
+      severity_filter: "info,low,medium,high,critical"
+      rate_limit: 150
+      bulk_size: 25
+      timeout: 5
+      
+    nikto:
+      enabled: true
+      path: "/usr/bin/nikto"
+      plugins: "all"
+      timeout: 600
+      
+    wpscan:
+      enabled: true
+      path: "/usr/bin/wpscan"
+      api_token: ""
+      enumerate: "p,t,u"
+      
+    droopescan:
+      enabled: false
+      path: "/usr/bin/droopescan"
+      
+    joomscan:
+      enabled: false
+      path: "/usr/bin/joomscan"
+      
+    retire_js:
+      enabled: true
+      path: "/usr/bin/retire"
+      
+    dependency_check:
+      enabled: false
+      path: "/usr/bin/dependency-check"
+      
+  # OWASP Top 10 Testing (Phase 3)
+  owasp_top10:
+    enabled: true
+    
+    # A01: Broken Access Control
+    access_control:
+      idor_testing: true
+      privilege_escalation: true
+      path_traversal: true
+      forced_browsing: true
+      
+    # A02: Cryptographic Failures
+    crypto:
+      ssl_tls_analysis: true
+      weak_encryption: true
+      sensitive_data_exposure: true
+      cookie_security: true
+      
+    # A03: Injection
+    injection:
+      sql_injection: true
+      nosql_injection: true
+      command_injection: true
+      ldap_injection: true
+      xpath_injection: true
+      template_injection: true
+      ssti: true
+      
+    # A04: Insecure Design
+    design:
+      business_logic: true
+      rate_limiting: true
+      
+    # A05: Security Misconfiguration
+    misconfiguration:
+      default_credentials: true
+      information_disclosure: true
+      directory_listing: true
+      security_headers: true
+      cors_testing: true
+      
+    # A06: Vulnerable Components
+    components:
+      cve_matching: true
+      library_detection: true
+      
+    # A07: Authentication Failures
+    authentication:
+      brute_force: false  # Dangerous, manual only
+      credential_stuffing: false
+      session_testing: true
+      jwt_testing: true
+      oauth_testing: true
+      
+    # A08: Software and Data Integrity
+    integrity:
+      deserialization: true
+      
+    # A09: Security Logging Failures
+    logging:
+      enabled: true
+      
+    # A10: SSRF
+    ssrf:
+      enabled: true
+      cloud_metadata: true
+      internal_probing: true
+
+  # Fuzzing Configuration
+  fuzzing:
+    ffuf:
+      enabled: true
+      path: "/usr/bin/ffuf"
+      wordlists:
+        directories: "/usr/share/wordlists/dirb/common.txt"
+        files: "/usr/share/wordlists/dirb/common.txt"
+        parameters: "./wordlists/parameters.txt"
+      rate_limit: 100
+      
+  # API Security Testing
+  api_testing:
+    enabled: true
+    rest_api: true
+    graphql: true
+    soap: true
+    openapi_parsing: true
+
+# ============================================
+# EXPLOITATION & POST-EXPLOITATION (Phase 4)
+# ============================================
+exploitation:
+  enabled: false  # Requires explicit authorization
+  
+  # Metasploit Integration
+  metasploit:
+    enabled: false
+    rpc_host: "127.0.0.1"
+    rpc_port: 55553
+    rpc_username: "msf"
+    rpc_password: ""
+    
+  # Exploit Database
+  exploitdb:
+    enabled: true
+    local_path: "/usr/share/exploitdb"
+    auto_update: true
+    
+  # Credential Attacks
+  credentials:
+    enabled: false  # Very dangerous
+    
+    brute_force:
+      enabled: false
+      max_attempts: 3
+      delay_seconds: 1
+      
+    hash_cracking:
+      enabled: false
+      hashcat_path: "/usr/bin/hashcat"
+      john_path: "/usr/bin/john"
+      wordlist: "/usr/share/wordlists/rockyou.txt"
+
+# ============================================
+# INTERCEPTING PROXY (Phase 5)
+# ============================================
+proxy:
+  enabled: true
+  
+  # HTTP/HTTPS Proxy
+  http_proxy:
+    host: "127.0.0.1"
+    port: 8080
+    ssl_port: 8443
+    
+  # Proxy Features
+  features:
+    interception: true
+    history: true
+    history_max_entries: 10000
+    websocket_support: true
+    http2_support: true
+    
+  # Certificate
+  certificate:
+    ca_cert: "./certs/redsentinel-ca.crt"
+    ca_key: "./certs/redsentinel-ca.key"
+    auto_generate: true
+    
+  # Request Editor
+  editor:
+    syntax_highlighting: true
+    auto_decode: true
+    
+  # Intruder/Fuzzer
+  intruder:
+    enabled: true
+    max_concurrent: 10
+    attack_types:
+      - "sniper"
+      - "battering_ram"
+      - "pitchfork"
+      - "cluster_bomb"
+
+# ============================================
+# REPORTING & COMPLIANCE (Phase 6)
+# ============================================
+reporting:
+  output_dir: "./reports"
+  
+  # Report Formats
+  formats:
+    pdf: true
+    html: true
+    json: true
+    xml: true
+    csv: true
+    markdown: true
+    
+  # Report Templates
+  templates:
+    executive: true
+    technical: true
+    compliance: true
+    custom_dir: "./report-templates"
+    
+  # Report Features
+  features:
+    screenshots: true
+    poc_evidence: true
+    remediation: true
+    metrics: true
+    charts: true
+    
+  # Branding
+  branding:
+    logo: "./assets/logo.png"
+    company_name: "Your Company"
+    watermark: true
+    
+  # Compliance Frameworks
+  compliance:
+    owasp_top10: true
+    owasp_asvs: true
+    pci_dss: true
+    nist_csf: true
+    iso_27001: true
+    gdpr: false
+    hipaa: false
+    cis_controls: true
+    mitre_attack: true
+
+# ============================================
+# THREAT INTELLIGENCE (Phase 7)
+# ============================================
+intelligence:
+  enabled: true
+  
+  # CVE Database
+  cve:
+    local_mirror: true
+    database_path: "./data/cve.db"
+    auto_update: true
+    update_interval_hours: 24
+    
+  # Threat Feeds
+  threat_feeds:
+    alienvault_otx: false
+    threatfox: false
+    abuseipdb: false
+    
+  # Machine Learning
+  machine_learning:
+    enabled: false
+    anomaly_detection: false
+    false_positive_reduction: false
+    payload_generation: false
+
+# ============================================
+# PERFORMANCE & SCALABILITY (Phase 9)
+# ============================================
+performance:
+  # Async/Concurrency
+  max_concurrent_tasks: 50
+  max_threads: 20
+  max_processes: 4
+  
+  # Connection Pooling
+  connection_pool:
+    enabled: true
+    size: 50
+    max_overflow: 20
+    
+  # Caching
+  caching:
+    enabled: true
+    backend: "redis"  # redis, memory
+    ttl: 3600
+    redis_host: "localhost"
+    redis_port: 6379
+    redis_db: 0
+    redis_password: ""
+    
+  # Rate Limiting
+  rate_limiting:
+    enabled: true
+    requests_per_second: 10
+    adaptive: true
+    respect_robots_txt: true
+    
+  # Resource Management
+  resources:
+    memory_limit_mb: 4096
+    cleanup_interval_seconds: 300
+
+# ============================================
+# SECURITY & STEALTH (Phase 10)
+# ============================================
+security:
+  # Evasion Techniques
+  evasion:
+    enabled: false
+    user_agent_rotation: true
+    user_agent_file: "./wordlists/user-agents.txt"
+    ip_rotation: false  # Requires proxy/tor
+    request_randomization: true
+    header_randomization: true
+    timing_randomization: true
+    encoding_variations: true
+    
+  # WAF Bypass
+  waf_bypass:
+    enabled: false
+    context_aware: true
+    
+  # Operational Security
+  opsec:
+    traffic_encryption: true
+    credential_encryption: true
+    secure_delete: true
+    anonymization: false
+    
+  # Tor/Proxy
+  tor:
+    enabled: false
+    socks_proxy: "127.0.0.1:9050"
+    control_port: 9051
+    
+  proxy_chains:
+    enabled: false
+    proxies: []
+
+# ============================================
+# API SERVER (Phase 1)
+# ============================================
+api_server:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8000
+  
+  # Security
+  cors_enabled: true
+  cors_origins:
+    - "http://localhost:3000"
+  jwt_secret: ""  # Generate secure secret
+  jwt_expiration: 3600
+  
+  # Features
+  authentication: true
+  rate_limiting: true
+  api_docs: true  # Swagger/OpenAPI
+
+# ============================================
+# INTEGRATIONS (Phase 11)
+# ============================================
+integrations:
+  # Burp Suite
+  burp:
+    import_projects: true
+    export_projects: true
+    
+  # OWASP ZAP
+  zap:
+    compatibility: true
+    
+  # Other Tools
+  nessus:
+    enabled: false
+  qualys:
+    enabled: false
+  bloodhound:
+    enabled: false
+
+# ============================================
+# PLUGINS (Phase 11)
+# ============================================
+plugins:
+  enabled: true
+  plugin_dir: "./plugins"
+  auto_load: true
+  hot_reload: true
+  marketplace_enabled: false
+
+# ============================================
+# MONITORING & ALERTING
+# ============================================
+monitoring:
+  enabled: true
+  
+  # Continuous Monitoring
+  continuous:
+    enabled: false
+    interval_minutes: 60
+    
+  # Webhooks
+  webhooks:
+    slack:
+      enabled: false
+      webhook_url: ""
+    discord:
+      enabled: false
+      webhook_url: ""
+    teams:
+      enabled: false
+      webhook_url: ""
+    
+  # Email Notifications
+  email:
+    enabled: false
+    smtp_host: ""
+    smtp_port: 587
+    smtp_username: ""
+    smtp_password: ""
+    from_address: ""
+    to_addresses: []
+
+# ============================================
+# UI/UX CONFIGURATION (Phase 8)
+# ============================================
+ui:
+  # CLI Settings
+  cli:
+    theme: "dark"  # dark, light
+    rich_console: true
+    progress_bars: true
+    color_output: true
+    
+  # TUI Settings
+  tui:
+    enabled: true
+    keybindings: "vim"  # vim, emacs, default
+    
+  # GUI Settings
+  gui:
+    enabled: true
+    theme: "dark"
+    
+  # Web UI Settings
+  web_ui:
+    enabled: false
+    host: "127.0.0.1"
+    port: 3000
+
+# ============================================
+# TOOLS CONFIGURATION
+# ============================================
 tools:
+  # External Tools Paths
   nmap:
     enabled: true
-    args: "-sC -sV -T4 --min-rate 100"
+    path: "/usr/bin/nmap"
+    args: "-sC -sV -T4"
     timeout: 300
-  nuclei:
-    enabled: true
-    path: "/usr/local/bin/nuclei"
-    templates_dir: "/path/to/nuclei-templates"
-    args: "-t default-templates -silent"
-  ffuf:
-    enabled: true
-    path: "/usr/local/bin/ffuf"
+    
   masscan:
     enabled: true
     path: "/usr/bin/masscan"
     rate: 1000
+    
+  hydra:
+    enabled: false
+    path: "/usr/bin/hydra"
+    
+  john:
+    enabled: false
+    path: "/usr/bin/john"
+    
+  hashcat:
+    enabled: false
+    path: "/usr/bin/hashcat"
 
+# ============================================
+# EXECUTION SETTINGS
+# ============================================
 execution:
   dry_run: false
-  concurrency: 10
-  max_runtime_seconds: 600
-  throttle_seconds_between_tools: 1
-
-storage:
-  sqlite_path: "redsentinel_results.db"
+  verbose: false
+  debug: false
+  
+  # Timeouts
+  default_timeout: 30
+  max_scan_duration: 3600
+  
+  # Retry Logic
+  max_retries: 3
+  retry_delay: 5
+  
+  # Throttling
+  throttle_enabled: true
+  throttle_seconds: 1

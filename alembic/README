@@ -1,0 +1,38 @@
+Generic single-database configuration for RedSentinel.
+
+## Usage
+
+### Create a new migration
+```bash
+alembic revision --autogenerate -m "Description of changes"
+```
+
+### Apply migrations
+```bash
+alembic upgrade head
+```
+
+### Downgrade migrations
+```bash
+alembic downgrade -1  # Downgrade one version
+alembic downgrade base  # Downgrade to initial state
+```
+
+### View migration history
+```bash
+alembic history
+alembic current
+```
+
+### Merge multiple heads
+```bash
+alembic merge heads -m "merge message"
+```
+
+## Notes
+
+- Migrations are automatically detected based on model changes
+- Always review generated migrations before applying
+- Test migrations in development before production
+- Keep migrations in version control
+

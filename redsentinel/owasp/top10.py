@@ -251,8 +251,15 @@ def classify_vulnerability(vulnerability_name, vulnerability_description="", cve
     
     # Si aucun match, essayer par CVE si fourni
     if cve_id:
-        # TODO: Mapping CVE -> CWE -> OWASP
-        pass
+        from redsentinel.vulns.cve_cwe_mapper import cve_to_owasp, map_vulnerability_to_owasp
+        # Utiliser le mapper CVE -> CWE -> OWASP
+        result = map_vulnerability_to_owasp(
+            vulnerability_name,
+            vulnerability_description,
+            cve_id=cve_id
+        )
+        if result.get("owasp_category") != "NON CLASSÉ":
+            return result
     
     # Pas de match trouvé
     return {

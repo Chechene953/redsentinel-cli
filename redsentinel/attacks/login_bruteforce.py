@@ -223,7 +223,7 @@ async def attempt_login(
 
 async def smart_login_detection(url: str) -> Dict[str, str]:
     """
-    Détecte automatiquement les paramètres de login et les indicateurs
+    Détecte automatiquement les paramètres de login et les indicateurs via scraping
     
     Args:
         url: URL de la page de login
@@ -231,14 +231,120 @@ async def smart_login_detection(url: str) -> Dict[str, str]:
     Returns:
         Dict avec les paramètres détectés
     """
-    # TODO: Implémenter la détection automatique via scraping
-    # Pour l'instant, retourne des valeurs par défaut
-    return {
+    import aiohttp
+    from bs4 import BeautifulSoup
+    import re
+    
+    result = {
         "username_param": "username",
         "password_param": "password",
+        "form_action": url,
+        "form_method": "POST",
         "success_indicator": None,
-        "failure_indicator": None
+        "failure_indicator": None,
+        "csrf_token": None,
+        "other_fields": {}
     }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status != 200:
+                    return result
+                
+                html_content = await response.text()
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # Trouver le formulaire de login
+                forms = soup.find_all('form')
+                login_form = None
+                
+                for form in forms:
+                    form_html = str(form).lower()
+                    # Détecter si c'est un formulaire de login
+                    if any(keyword in form_html for keyword in ['login', 'signin', 'auth', 'password', 'username', 'email']):
+                        login_form = form
+                        break
+                
+                if not login_form and forms:
+                    # Prendre le premier formulaire si aucun login détecté
+                    login_form = forms[0]
+                
+                if login_form:
+                    # Détecter l'action du formulaire
+                    form_action = login_form.get('action', '')
+                    if form_action:
+                        # Résoudre l'URL relative
+                        from urllib.parse import urljoin
+                        result["form_action"] = urljoin(url, form_action)
+                    
+                    result["form_method"] = login_form.get('method', 'POST').upper()
+                    
+                    # Trouver les champs username/email
+                    username_fields = login_form.find_all(['input', 'textarea'], {
+                        'type': ['text', 'email', None],
+                        'name': re.compile(r'user|login|email|account|name', re.I)
+                    })
+                    
+                    if not username_fields:
+                        # Chercher par id
+                        username_fields = login_form.find_all(['input', 'textarea'], {
+                            'id': re.compile(r'user|login|email|account|name', re.I)
+                        })
+                    
+                    if username_fields:
+                        result["username_param"] = username_fields[0].get('name') or username_fields[0].get('id', 'username')
+                    
+                    # Trouver le champ password
+                    password_fields = login_form.find_all('input', {'type': 'password'})
+                    if password_fields:
+                        result["password_param"] = password_fields[0].get('name') or password_fields[0].get('id', 'password')
+                    
+                    # Trouver les autres champs (CSRF, etc.)
+                    all_inputs = login_form.find_all('input')
+                    for inp in all_inputs:
+                        inp_name = inp.get('name') or inp.get('id', '')
+                        inp_type = inp.get('type', '').lower()
+                        inp_value = inp.get('value', '')
+                        
+                        if inp_type == 'hidden':
+                            if any(keyword in inp_name.lower() for keyword in ['csrf', 'token', '_token', 'authenticity']):
+                                result["csrf_token"] = inp_value
+                            else:
+                                result["other_fields"][inp_name] = inp_value
+                
+                # Détecter les indicateurs de succès/échec dans la page
+                page_text = soup.get_text().lower()
+                
+                # Indicateurs de succès communs
+                success_patterns = [
+                    r'welcome|success|logged in|dashboard|profile|account|logout',
+                    r'redirect|location\.href|window\.location'
+                ]
+                
+                # Indicateurs d'échec communs
+                failure_patterns = [
+                    r'invalid|incorrect|wrong|failed|error|denied|unauthorized|forbidden',
+                    r'username.*password|password.*username|credentials'
+                ]
+                
+                # Chercher dans le JavaScript aussi
+                scripts = soup.find_all('script')
+                js_content = ' '.join([script.string or '' for script in scripts]).lower()
+                
+                # Détecter les messages d'erreur typiques
+                if any(re.search(pattern, page_text) for pattern in failure_patterns):
+                    result["failure_indicator"] = "error message detected"
+                
+                # Détecter les redirections de succès
+                if 'redirect' in js_content or 'location.href' in js_content:
+                    result["success_indicator"] = "redirect detected"
+                
+    except Exception as e:
+        # En cas d'erreur, retourner les valeurs par défaut
+        pass
+    
+    return result
 
 
 def generate_common_usernames(domain: str = None) -> List[str]:

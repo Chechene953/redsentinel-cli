@@ -1,6 +1,10 @@
 """
-Module de mapping de conformité (RGPD, PCI-DSS, ISO 27001)
+Module de mapping de conformité (RGPD, PCI-DSS, ISO 27001, NIST, CWE Top 25)
+Mapping complet vers tous les standards de sécurité majeurs
 """
+
+from typing import Dict, List, Optional
+from redsentinel.vulns.cve_cwe_mapper import cwe_to_owasp
 
 
 # Mapping RGPD

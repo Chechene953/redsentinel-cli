@@ -154,35 +154,124 @@ def droopescan_scan(url, cms="drupal"):
     return {"rc": rc, "out": out, "err": err}
 
 
-async def comprehensive_cms_scan(url):
+async def comprehensive_cms_scan(url, cms_type=None):
     """
-    Detect CMS and run appropriate scanner
+    Detect CMS and run appropriate scanner with structured vulnerability output
     
     Args:
         url: Site URL
+        cms_type: CMS type to scan (auto-detected if None)
     
     Returns:
-        dict with CMS scan results
+        dict with CMS scan results including structured vulnerabilities
     """
+    from redsentinel.core.error_handler import get_error_handler, ErrorContext
+    from redsentinel.vulns.cve_matcher import search_cve
+    
+    error_handler = get_error_handler()
+    context = ErrorContext("comprehensive_cms_scan", url)
+    
     results = {
         "url": url,
         "cms_detection": None,
-        "scanner_results": None
+        "scanner_results": None,
+        "vulnerabilities": []
     }
     
-    # First, detect CMS
-    detection = cms_detection(url)
-    results["cms_detection"] = detection
+    # Detect CMS if not provided
+    if cms_type is None:
+        detection = cms_detection(url)
+        results["cms_detection"] = detection
+        cms_type = detection.get("cms", "").lower()
+    else:
+        results["cms_detection"] = {"cms": cms_type, "confidence": 100}
+        cms_type = cms_type.lower()
     
     # Run appropriate scanner
-    if detection["cms"] == "WordPress":
-        results["scanner_results"] = wpscan_scan(url)
-    elif detection["cms"] == "Joomla":
-        results["scanner_results"] = joomscan_scan(url)
-    elif detection["cms"] == "Drupal":
-        results["scanner_results"] = droopescan_scan(url, "drupal")
+    scanner_output = None
+    if cms_type == "wordpress":
+        scanner_output = wpscan_scan(url)
+    elif cms_type == "joomla":
+        scanner_output = joomscan_scan(url)
+    elif cms_type == "drupal":
+        scanner_output = droopescan_scan(url, "drupal")
     else:
-        results["scanner_results"] = {"info": "No CMS-specific scanner available"}
+        scanner_output = {"info": "No CMS-specific scanner available"}
+    
+    results["scanner_results"] = scanner_output
+    
+    # Parse vulnerabilities from scanner output
+    vulnerabilities = []
+    
+    if scanner_output and not scanner_output.get("error"):
+        output_text = scanner_output.get("out", "")
+        
+        # Extract CVE IDs
+        import re
+        cve_pattern = r'CVE-\d{4}-\d{4,7}'
+        cves = re.findall(cve_pattern, output_text, re.IGNORECASE)
+        
+        # Extract vulnerability information
+        for cve in set(cves):
+            vuln = {
+                "id": cve,
+                "type": "CMS Vulnerability",
+                "severity": "UNKNOWN",
+                "description": f"Vulnerability found in {cms_type}",
+                "cms": cms_type,
+                "url": url,
+                "cve_id": cve
+            }
+            
+            # Try to get CVE details
+            try:
+                cve_info = search_cve(cve)
+                if cve_info:
+                    vuln["severity"] = cve_info.get("severity", "UNKNOWN")
+                    vuln["description"] = cve_info.get("description", vuln["description"])
+                    vuln["cvss_score"] = cve_info.get("cvss_score", "")
+            except:
+                pass
+            
+            vulnerabilities.append(vuln)
+        
+        # Extract version-specific vulnerabilities
+        version_match = re.search(r'version[:\s]+([\d.]+)', output_text, re.IGNORECASE)
+        if version_match:
+            version = version_match.group(1)
+            results["cms_detection"]["version"] = version
+            
+            # Check for known vulnerable versions
+            vulnerable_versions = {
+                "wordpress": {
+                    "4.0": ["CVE-2015-2213"],
+                    "4.1": ["CVE-2015-2213"],
+                    "4.2": ["CVE-2015-2213"]
+                },
+                "drupal": {
+                    "7.0": ["CVE-2014-3704"],  # Drupalgeddon
+                    "8.0": ["CVE-2018-7600"]   # Drupalgeddon2
+                }
+            }
+            
+            if cms_type in vulnerable_versions:
+                for vuln_version, cve_list in vulnerable_versions[cms_type].items():
+                    if version.startswith(vuln_version):
+                        for cve in cve_list:
+                            if cve not in [v["cve_id"] for v in vulnerabilities]:
+                                vulnerabilities.append({
+                                    "id": cve,
+                                    "type": "CMS Version Vulnerability",
+                                    "severity": "CRITICAL",
+                                    "description": f"Known vulnerable {cms_type} version {version}",
+                                    "cms": cms_type,
+                                    "version": version,
+                                    "url": url,
+                                    "cve_id": cve
+                                })
+    
+    results["vulnerabilities"] = vulnerabilities
+    results["vulnerability_count"] = len(vulnerabilities)
     
     return results
 

@@ -64,11 +64,21 @@ async def passive_recon_complete(domain: str) -> Dict:
     }
     
     async with ProfessionalRecon() as recon:
-        # 1. SUBDOMAIN ENUMERATION - Multiple sources
-        print(f"[*] Passive: Subdomain enumeration from 10+ sources...")
+        # 1. SUBDOMAIN ENUMERATION - Multiple sources (20+)
+        print(f"[*] Passive: Subdomain enumeration from 20+ sources...")
         from redsentinel.tools.recon_advanced import advanced_subdomain_enum
-        subdomain_results = await advanced_subdomain_enum(domain, use_wordlist=False)
-        results["subdomains"].update(subdomain_results.get("subdomains", []))
+        from redsentinel.osint.advanced_sources import all_advanced_sources
+        from redsentinel.recon.advanced_enum import comprehensive_recon_pipeline
+        
+        # Use comprehensive pipeline if API keys available
+        api_keys = {}  # TODO: Load from config
+        try:
+            pipeline_results = await comprehensive_recon_pipeline(domain, api_keys=api_keys)
+            results["subdomains"].update(pipeline_results.get("subdomains", []))
+        except Exception as e:
+            logger.warning(f"Pipeline failed, falling back to basic enum: {e}")
+            subdomain_results = await advanced_subdomain_enum(domain, use_wordlist=False)
+            results["subdomains"].update(subdomain_results.get("subdomains", []))
         
         # Add additional passive sources
         additional_sources = [
@@ -77,6 +87,14 @@ async def passive_recon_complete(domain: str) -> Dict:
             ("urlscan", await _urlscan_passive_scan(domain)),
             ("hackertarget", await _hackertarget_subdomains(domain))
         ]
+        
+        # Add advanced sources
+        try:
+            advanced_results = await all_advanced_sources(domain, api_keys)
+            if advanced_results.get("all"):
+                results["subdomains"].update(advanced_results["all"])
+        except Exception as e:
+            logger.warning(f"Advanced sources failed: {e}")
         
         for source_name, source_results in additional_sources:
             if source_results:
@@ -133,9 +151,20 @@ async def passive_recon_complete(domain: str) -> Dict:
         cms_result = await asyncio.to_thread(cms_detection, f"https://{domain}")
         results["cms_info"] = cms_result
         
-        # 8. CLOUD S3/GCP/AZURE BUCKETS
+        # 8. CLOUD S3/GCP/AZURE BUCKETS (amélioré)
         print(f"[*] Passive: Cloud bucket enumeration...")
         results["cloud_buckets"] = await scan_cloud_buckets(domain)
+        
+        # 8.1 Subdomain takeover detection
+        print(f"[*] Passive: Subdomain takeover detection...")
+        from redsentinel.osint.advanced_sources import subdomain_takeover_check
+        takeover_results = []
+        # Check top 50 subdomains for takeover
+        for subdomain in list(results["subdomains"])[:50]:
+            takeover_result = await subdomain_takeover_check(subdomain)
+            if takeover_result.get("vulnerable"):
+                takeover_results.append(takeover_result)
+        results["subdomain_takeovers"] = takeover_results
         
         # 9. GITHUB LEAKS
         print(f"[*] Passive: GitHub leak detection...")
