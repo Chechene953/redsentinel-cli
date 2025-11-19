@@ -26,7 +26,8 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "redsentinel=redsentinel.cli_menu:main",
+            "redsentinel=redsentinel.cli_main:main",
+            "redsentinel-menu=redsentinel.cli_menu:interactive_menu",
             "redsentinel-gui=redsentinel.gui:launch_gui",
         ],
     },
