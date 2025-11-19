@@ -102,18 +102,34 @@ sudo tee "$LAUNCHER" > /dev/null <<EOF
 #!/usr/bin/env bash
 PROJECT_DIR="$PROJECT_DIR"
 VENV_DIR="$PROJECT_DIR/.venv"
-if [ -f "\$VENV_DIR/bin/activate" ]; then
-  # shellcheck disable=SC1090
-  source "\$VENV_DIR/bin/activate"
+
+# Utiliser le script installé par setuptools si disponible
+if [ -f "\$VENV_DIR/bin/redsentinel" ]; then
+  exec "\$VENV_DIR/bin/redsentinel" "\$@"
+else
+  # Fallback: activer le venv et utiliser Python directement
+  if [ -f "\$VENV_DIR/bin/activate" ]; then
+    # shellcheck disable=SC1090
+    source "\$VENV_DIR/bin/activate"
+  fi
+  python -m redsentinel "\$@"
 fi
-python -m redsentinel.cli_menu "\$@"
 EOF
 
 sudo chmod +x "$LAUNCHER"
 
-echo "[*] Installation complete."
-echo "You can run: redsentinel"
-echo "Examples:"
-echo "  redsentinel                 # interactive menu"
-echo "  redsentinel recon example.com"
-echo "  redsentinel scan example.com --ports 80,443,22"
+echo ""
+echo "========================================="
+echo "  RedSentinel v7.0 Installation Complete"
+echo "  MACHINE DE GUERRE CYBER"
+echo "========================================="
+echo ""
+echo "✓ Commande disponible: redsentinel"
+echo ""
+echo "Exemples d'utilisation:"
+echo "  redsentinel                      # Menu interactif"
+echo "  redsentinel --help               # Aide"
+echo "  redsentinel --version            # Version"
+echo ""
+echo "Lancez simplement: redsentinel"
+echo ""

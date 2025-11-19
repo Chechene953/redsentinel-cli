@@ -1576,7 +1576,7 @@ def interactive_menu():
         console.print()
         # Menu panel hiérarchique
         menu_text = (
-            "[bold]REDSENTINEL v6.0 ULTRA[/bold]\n\n"
+            "[bold]REDSENTINEL v7.0 - MACHINE DE GUERRE CYBER[/bold]\n\n"
             "═══════════════════════════════════════════════════════════\n\n"
             "[bold cyan][1] RECONNAISSANCE & ENUMERATION[/bold cyan]\n"
             "   1.0 FULL PROFESSIONAL RECON PIPELINE (ALL-IN-ONE)\n"

@@ -1,0 +1,165 @@
+═══════════════════════════════════════════════════════════════════
+  RedSentinel v7.0 - Installation Linux - MACHINE DE GUERRE CYBER
+═══════════════════════════════════════════════════════════════════
+
+📋 PRÉREQUIS
+═════════════
+
+• Python 3.7+ (recommandé: Python 3.11 ou 3.12)
+• Git
+• sudo (pour l'installation globale)
+• pip
+
+🚀 INSTALLATION EN 2 COMMANDES
+═══════════════════════════════
+
+1️⃣ Cloner le dépôt:
+   $ git clone https://github.com/votre-repo/redsentinel-cli.git
+   $ cd redsentinel-cli
+
+2️⃣ Lancer l'installation:
+   $ sudo bash install.sh
+
+🎯 C'EST TOUT!
+═══════════════
+
+Après l'installation, tapez simplement:
+
+   $ redsentinel
+
+✅ VÉRIFICATION
+════════════════
+
+Test 1: Vérifier la commande
+   $ which redsentinel
+   → /usr/local/bin/redsentinel
+
+Test 2: Vérifier la version
+   $ redsentinel --version
+   → RedSentinel v7.0.0
+
+Test 3: Afficher l'aide
+   $ redsentinel --help
+
+Test 4: Lancer le menu interactif
+   $ redsentinel
+
+🔧 SCRIPT DE TEST AUTOMATIQUE
+══════════════════════════════
+
+Utilisez le script de test pour vérifier l'installation:
+
+   $ bash test_install.sh
+
+📍 EMPLACEMENTS DES FICHIERS
+═════════════════════════════
+
+Installation    : ~/redsentinel-auto/
+Virtualenv      : ~/redsentinel-auto/.venv/
+Commande globale: /usr/local/bin/redsentinel
+Configuration   : ~/.redsentinel/config.yaml
+Base de données : ~/.redsentinel/redsentinel.db
+Logs            : ~/.redsentinel/logs/
+
+🎮 UTILISATION
+══════════════
+
+Menu interactif:
+   $ redsentinel
+
+Commandes CLI:
+   $ redsentinel --help
+   $ redsentinel --version
+   $ redsentinel recon subdomains example.com
+   $ redsentinel vuln nuclei https://example.com
+
+Interface TUI:
+   $ redsentinel tui
+
+Interface GUI:
+   $ redsentinel --gui
+
+🔄 MISE À JOUR
+═══════════════
+
+   $ cd ~/redsentinel-auto
+   $ git pull
+   $ sudo bash install.sh
+
+🐛 DÉPANNAGE
+════════════
+
+Problème: "redsentinel: command not found"
+Solution 1: Vérifier le PATH
+   $ echo $PATH | grep "/usr/local/bin"
+   
+Solution 2: Ajouter au PATH (dans ~/.bashrc ou ~/.zshrc)
+   $ export PATH="/usr/local/bin:$PATH"
+   $ source ~/.bashrc
+
+Solution 3: Utiliser le chemin complet
+   $ /usr/local/bin/redsentinel
+
+Solution 4: Relancer l'installation
+   $ sudo bash install.sh
+
+───────────────────────────────────────────────────────────────────
+
+Problème: Erreur d'import de modules
+Solution: Réinstaller les dépendances
+   $ cd ~/redsentinel-auto
+   $ source .venv/bin/activate
+   $ pip install -r requirements.txt --force-reinstall
+
+───────────────────────────────────────────────────────────────────
+
+Problème: Permission denied
+Solution: Vérifier les permissions
+   $ sudo chmod +x /usr/local/bin/redsentinel
+   $ sudo chown $USER:$USER /usr/local/bin/redsentinel
+
+───────────────────────────────────────────────────────────────────
+
+📦 OUTILS EXTERNES (Optionnels)
+════════════════════════════════
+
+Pour profiter de toutes les fonctionnalités:
+
+Debian/Ubuntu:
+   $ sudo apt update
+   $ sudo apt install -y nmap masscan nikto nuclei ffuf hydra \
+     hashcat john sqlmap metasploit-framework
+
+Fedora/RHEL:
+   $ sudo dnf install -y nmap masscan nikto nuclei ffuf hydra \
+     hashcat john sqlmap metasploit-framework
+
+Arch Linux:
+   $ sudo pacman -S nmap masscan nikto nuclei ffuf hydra \
+     hashcat john sqlmap metasploit-framework
+
+🔗 LIENS UTILES
+═══════════════
+
+Documentation: ./docs/
+Changelog    : ./CHANGELOG_V7.md
+Guide rapide : ./QUICK_START.md
+Troubleshoot : ./TROUBLESHOOTING.md
+Roadmap      : ./ROADMAP.md
+
+🆘 SUPPORT
+══════════
+
+GitHub Issues: https://github.com/votre-repo/redsentinel-cli/issues
+Documentation: https://redsentinel.fr
+Email        : support@redsentinel.fr
+
+═══════════════════════════════════════════════════════════════════
+🔴 RedSentinel v7.0 - MACHINE DE GUERRE CYBER
+═══════════════════════════════════════════════════════════════════
+
+⚠️  DISCLAIMER: Utilisez uniquement sur des systèmes autorisés!
+    Les tests de pénétration non autorisés sont ILLÉGAUX.
+    
+═══════════════════════════════════════════════════════════════════
+
