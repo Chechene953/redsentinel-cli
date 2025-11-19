@@ -112,6 +112,41 @@ def get_version_info():
     }
 
 
+def check_for_updates():
+    """
+    Vérifie si une mise à jour est disponible
+    Retourne un dict avec les informations de mise à jour
+    """
+    update_status = check_git_update_available()
+    
+    current_info = get_version_info()
+    
+    result = {
+        'current_version': current_info['version'],
+        'current_commit': current_info.get('commit'),
+        'update_available': False,
+        'latest_version': current_info['version'],
+        'latest_commit': None
+    }
+    
+    if update_status is None:
+        # Pas un repo Git ou erreur
+        result['error'] = 'Not a git repository or unable to check'
+        return result
+    
+    if update_status is False:
+        # À jour
+        return result
+    
+    # Mise à jour disponible
+    current_hash, remote_hash = update_status
+    result['update_available'] = True
+    result['latest_commit'] = remote_hash[:8] if remote_hash else None
+    result['current_commit'] = current_hash[:8] if current_hash else None
+    
+    return result
+
+
 def check_update_and_prompt(console):
     """Vérifie les mises à jour et propose de mettre à jour si disponible"""
     from redsentinel.design import warning, info, error, success
